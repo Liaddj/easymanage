@@ -68,7 +68,7 @@ export function TabBar({ tabs, active, onChange }) {
   );
 }
 
-export default function Shell({ title, action, children, tabs, tab, onTab, login }) {
+export default function Shell({ title, action, children, overlay, tabs, tab, onTab, login }) {
   return (
     <div className="app-shell">
       <header className="topbar">
@@ -77,6 +77,7 @@ export default function Shell({ title, action, children, tabs, tab, onTab, login
       </header>
       <main className={`content ${login ? "login" : ""}`}>{children}</main>
       <ToastHost />
+      {overlay}
       {tabs ? <TabBar tabs={tabs} active={tab} onChange={onTab} /> : null}
     </div>
   );

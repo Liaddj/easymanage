@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { DEMO_PASSWORD, DEMO_USERS, defaultAvailability } from "../shared/demo.js";
-import { addDaysKey, dateKey, hoursUntil, slotStart, zonedParts } from "../shared/time.js";
+import { addDaysKey, dateKey, hoursUntil, parseDateKey, slotStart, zonedParts } from "../shared/time.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = process.env.DATA_DIR || join(__dirname, "..", "data");
@@ -47,18 +47,21 @@ export function verifyToken(token) {
   return data.sub;
 }
 
-function publicUser(user) {
-  return {
+function publicUser(user, { includeNotes = false } = {}) {
+  const out = {
     id: user.id,
     role: user.role,
     email: user.email,
     name: user.name,
     nameEn: user.nameEn,
-    city: user.city,
-    cityEn: user.cityEn,
+    city: user.city || "",
+    cityEn: user.cityEn || "",
     specialty: user.specialty || "",
     specialtyEn: user.specialtyEn || "",
+    phone: user.phone || "",
   };
+  if (includeNotes) out.notes = user.notes || "";
+  return out;
 }
 
 function nid(prefix) {
@@ -72,6 +75,10 @@ function emptyDb() {
 function migrate(data) {
   if (!data.invites) data.invites = [];
   if (!data.payments) data.payments = [];
+  for (const u of data.users || []) {
+    if (u.phone === undefined) u.phone = "";
+    if (u.notes === undefined) u.notes = "";
+  }
   for (const b of data.bookings || []) {
     if (!b.paymentStatus) {
       b.paymentStatus = new Date(b.start) < new Date() && b.status === "confirmed" ? "paid" : "unpaid";
@@ -217,6 +224,8 @@ export function register({ email, password, name, role, inviteCode }) {
     nameEn: String(name).trim(),
     city: "",
     cityEn: "",
+    phone: "",
+    notes: "",
     specialty: role === "provider" ? "אימון אישי" : "",
     specialtyEn: role === "provider" ? "Personal training" : "",
     invitedBy: invite && role !== "provider" ? invite.providerId : null,
@@ -274,8 +283,9 @@ function bookedStarts(providerId) {
   );
 }
 
-export function listOpenSlots(providerId, days = 14) {
+export function listOpenSlots(providerId, days = 14, onlyDate = "") {
   refresh();
+  if (onlyDate && !parseDateKey(onlyDate)) return [];
   const avail = getAvailability(providerId);
   const taken = bookedStarts(providerId);
   const todayKey = dateKey(new Date());
@@ -283,6 +293,7 @@ export function listOpenSlots(providerId, days = 14) {
   const out = [];
   for (let i = 0; i < days; i += 1) {
     const key = addDaysKey(todayKey, i);
+    if (onlyDate && key !== onlyDate) continue;
     const probe = slotStart(key, 12);
     const weekday = zonedParts(probe).weekday;
     const hours = avail.filter((s) => s.weekday === weekday).map((s) => s.hour);
@@ -390,7 +401,7 @@ export function listClients(providerId) {
       .filter((b) => b.status === "confirmed" && new Date(b.start) <= new Date())
       .sort((a, b) => new Date(b.start) - new Date(a.start))[0];
     return {
-      client: user ? publicUser(user) : { id: clientId, name: "?", email: "" },
+      client: user ? publicUser(user, { includeNotes: true }) : { id: clientId, name: "?", email: "" },
       upcoming: upcoming ? enrichBooking(upcoming) : null,
       last: last ? enrichBooking(last) : null,
       total: rows.filter((b) => b.status === "confirmed").length,
@@ -463,11 +474,94 @@ export function bookingById(id) {
   return b ? enrichBooking(b) : null;
 }
 
-const CARD_KEYS = /^(card|pan|cvv|cvc|number|exp|expiry|cardnumber|card_number)$/i;
+const CARD_KEYS = /^(card|pan|cvv|cvc|number|exp|expiry|cardnumber|card_number|ccn|creditcard|credit_card)$/i;
+const PAN_LIKE = /(?:\d[ -]*){13,19}/;
 
 export function rejectCardFields(body) {
   if (!body || typeof body !== "object") return false;
-  return Object.keys(body).some((k) => CARD_KEYS.test(k));
+  for (const [k, v] of Object.entries(body)) {
+    if (CARD_KEYS.test(k)) return true;
+    if (typeof v === "string" && PAN_LIKE.test(v) && /card|pan|cvv|cvc|cc/i.test(k + v.slice(0, 8))) return true;
+    if (v && typeof v === "object") {
+      if (rejectCardFields(v)) return true;
+    }
+  }
+  return false;
+}
+
+function cleanText(value, max) {
+  return String(value ?? "").trim().slice(0, max);
+}
+
+export function updateProfile(user, fields = {}) {
+  refresh();
+  const row = db.users.find((u) => u.id === user.id);
+  if (!row) throw new Error("not_found");
+  if (fields.name !== undefined) {
+    const name = cleanText(fields.name, 60);
+    if (!name) throw new Error("missing_fields");
+    row.name = name;
+    row.nameEn = name;
+  }
+  if (fields.phone !== undefined) row.phone = cleanText(fields.phone, 20);
+  if (fields.city !== undefined) {
+    row.city = cleanText(fields.city, 40);
+    row.cityEn = row.city;
+  }
+  persist();
+  return publicUser(row);
+}
+
+function clientLinkedToCoach(providerId, clientId) {
+  const client = db.users.find((u) => u.id === clientId);
+  if (!client || client.role !== "client") return false;
+  if (client.invitedBy === providerId) return true;
+  return db.bookings.some((b) => b.providerId === providerId && b.clientId === clientId);
+}
+
+export function updateClient(providerId, clientId, fields = {}) {
+  refresh();
+  if (!clientLinkedToCoach(providerId, clientId)) throw new Error("forbidden");
+  const row = db.users.find((u) => u.id === clientId);
+  if (fields.notes !== undefined) row.notes = cleanText(fields.notes, 280);
+  if (fields.phone !== undefined) row.phone = cleanText(fields.phone, 20);
+  persist();
+  return publicUser(row, { includeNotes: true });
+}
+
+export function addClient(providerId, { name, email, phone, notes }) {
+  refresh();
+  const display = cleanText(name, 60);
+  if (!display) throw new Error("missing_fields");
+  const clean = cleanText(email, 80).toLowerCase();
+  if (clean) {
+    const existing = db.users.find((u) => u.email.toLowerCase() === clean);
+    if (existing) {
+      if (existing.role !== "client") throw new Error("not_client");
+      existing.invitedBy = providerId;
+      if (phone !== undefined) existing.phone = cleanText(phone, 20);
+      if (notes !== undefined) existing.notes = cleanText(notes, 280);
+      persist();
+      return { client: publicUser(existing, { includeNotes: true }), linked: true };
+    }
+  }
+  const user = {
+    id: nid("u"),
+    role: "client",
+    email: clean || `${nid("tmp")}@roster.flow`,
+    name: display,
+    nameEn: display,
+    city: "",
+    cityEn: "",
+    phone: cleanText(phone, 20),
+    notes: cleanText(notes, 280),
+    invitedBy: providerId,
+    rosterOnly: !clean,
+    password: hashPassword(randomBytes(16).toString("hex")),
+  };
+  db.users.push(user);
+  persist();
+  return { client: publicUser(user, { includeNotes: true }), linked: false };
 }
 
 export function demoCharge(user, { bookingId, idempotencyKey }) {

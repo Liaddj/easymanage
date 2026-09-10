@@ -2,6 +2,8 @@
 
 Dual-sided booking for solo fitness and tennis coaches. Hebrew-first UI, timezone `Asia/Jerusalem`.
 
+Clients pick a **date** on a phone calendar sheet, then see **free slots for that day only**, then confirm. Success and error toasts: הצלחה / שגיאה.
+
 This demo has **sandbox/mock payments only** (no PAN/CVV, no invoices, no real money). Google Calendar OAuth is off; ICS export is available.
 
 ## Stack

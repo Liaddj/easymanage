@@ -10,7 +10,7 @@ function stamp(iso) {
 }
 
 export function bookingToIcs(booking) {
-  const title = "Flow session";
+  const title = booking.provider?.name ? `אימון פלואו · ${booking.provider.name}` : "אימון פלואו";
   const desc = [booking.provider?.name, booking.client?.name].filter(Boolean).join(" · ");
   const uid = `${booking.id}@flow.local`;
   return [

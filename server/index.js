@@ -5,6 +5,7 @@ import { timingSafeEqual } from "node:crypto";
 import express from "express";
 import { bookingToIcs } from "../shared/ics.js";
 import {
+  addClient,
   bookingById,
   cancelBooking,
   coachInvite,
@@ -25,6 +26,8 @@ import {
   remindersFor,
   setAvailability,
   toggleAvailability,
+  updateClient,
+  updateProfile,
   verifyToken,
 } from "./store.js";
 
@@ -103,6 +106,19 @@ api.get("/me", requireUser, (req, res) => {
   res.json({ user: publicSafe(req.user) });
 });
 
+api.patch("/me", requireUser, (req, res) => {
+  try {
+    const user = updateProfile(req.user, {
+      name: req.body?.name,
+      phone: req.body?.phone,
+      city: req.body?.city,
+    });
+    res.json({ user });
+  } catch (err) {
+    res.status(err.message === "missing_fields" ? 400 : 400).json({ error: err.message });
+  }
+});
+
 api.get("/availability", requireUser, (req, res) => {
   const providerId = req.user.role === "provider" ? req.user.id : defaultProviderId();
   res.json({ slots: getAvailability(providerId), calendar: "disabled" });
@@ -120,7 +136,11 @@ api.post("/availability/toggle", requireUser, requireProvider, (req, res) => {
 
 api.get("/slots", requireUser, (req, res) => {
   const providerId = req.user.role === "provider" ? req.user.id : defaultProviderId();
-  res.json({ slots: listOpenSlots(providerId, 14) });
+  const date = String(req.query.date || "").slice(0, 10);
+  if (date && !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    return res.status(400).json({ error: "bad_date" });
+  }
+  res.json({ slots: listOpenSlots(providerId, 14, date), date: date || null });
 });
 
 api.get("/bookings", requireUser, (req, res) => {
@@ -150,6 +170,34 @@ api.post("/bookings/:id/cancel", requireUser, (req, res) => {
 
 api.get("/clients", requireUser, requireProvider, (req, res) => {
   res.json({ clients: listClients(req.user.id) });
+});
+
+api.post("/clients", requireUser, requireProvider, (req, res) => {
+  try {
+    const result = addClient(req.user.id, {
+      name: req.body?.name,
+      email: req.body?.email,
+      phone: req.body?.phone,
+      notes: req.body?.notes,
+    });
+    res.status(201).json(result);
+  } catch (err) {
+    const map = { missing_fields: 400, not_client: 409 };
+    res.status(map[err.message] || 400).json({ error: err.message });
+  }
+});
+
+api.patch("/clients/:id", requireUser, requireProvider, (req, res) => {
+  try {
+    const client = updateClient(req.user.id, req.params.id, {
+      notes: req.body?.notes,
+      phone: req.body?.phone,
+    });
+    res.json({ client });
+  } catch (err) {
+    const map = { forbidden: 403, not_found: 404 };
+    res.status(map[err.message] || 400).json({ error: err.message });
+  }
 });
 
 api.get("/reminders", requireUser, (req, res) => {

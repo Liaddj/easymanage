@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { api } from "../api.js";
+import { toast } from "../Toast.jsx";
 import Shell from "../Shell.jsx";
 
 export default function Login({ lang, tr, onAuthed, action }) {
@@ -22,7 +23,9 @@ export default function Login({ lang, tr, onAuthed, action }) {
           : await api.register({ email, password, name, role: "client" });
       onAuthed(result);
     } catch (err) {
-      setError(err.message === "invalid_credentials" ? tr("badLogin") : tr("error"));
+      const msg = err.message === "invalid_credentials" ? tr("badLogin") : tr("error");
+      setError(msg);
+      toast(msg, "err");
     } finally {
       setBusy(false);
     }
@@ -39,6 +42,7 @@ export default function Login({ lang, tr, onAuthed, action }) {
       onAuthed(await api.login(creds.email, creds.password));
     } catch {
       setError(tr("error"));
+      toast(tr("error"), "err");
     } finally {
       setBusy(false);
     }

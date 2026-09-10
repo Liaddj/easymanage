@@ -1,14 +1,23 @@
 import { useEffect, useMemo, useState } from "react";
 import { api } from "../api.js";
 import { downloadIcs } from "@shared/ics.js";
-import { formatDate, formatDateTime, formatTime } from "@shared/time.js";
+import { formatDateLong, formatDateTime, formatTime, todayKey } from "@shared/time.js";
 import { toast } from "../Toast.jsx";
 import Shell from "../Shell.jsx";
+import DateSheet from "../DateSheet.jsx";
+import Sheet, { ConfirmSheet, Segment, Skeleton } from "../Sheet.jsx";
 
 function payLabel(tr, status) {
   if (status === "paid") return tr("paid");
   if (status === "failed") return tr("failed");
   return tr("unpaid");
+}
+
+function bookError(err, tr) {
+  if (err.message === "taken") return tr("takenDetail");
+  if (err.message === "past_slot") return tr("pastSlot");
+  if (err.message === "not_available") return tr("notAvail");
+  return tr("error");
 }
 
 function scheduleLocalReminder(booking, tr) {
@@ -26,78 +35,109 @@ export default function Client({ lang, tr, user, action, onLogout }) {
   const [reminders, setReminders] = useState([]);
   const [day, setDay] = useState("");
   const [pick, setPick] = useState(null);
-  const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [sheet, setSheet] = useState(null);
+  const [meList, setMeList] = useState("upcoming");
+  const [profile, setProfile] = useState(user);
+  const [form, setForm] = useState({ name: user.name, phone: user.phone || "", city: user.city || "" });
 
   async function load() {
     const [s, b, r] = await Promise.all([api.slots(), api.bookings(), api.reminders()]);
     setSlots(s.slots);
     setBookings(b.bookings);
     setReminders(r.banners);
-    if (!day && s.slots[0]) setDay(s.slots[0].dateKey);
     setLoading(false);
   }
 
   useEffect(() => {
-    load().catch(() => setError(tr("error")));
+    setProfile(user);
+    setForm({ name: user.name, phone: user.phone || "", city: user.city || "" });
+  }, [user]);
+
+  useEffect(() => {
+    load().catch(() => {
+      toast(tr("error"), "err");
+      setLoading(false);
+    });
   }, []);
 
-  const days = useMemo(() => {
-    const map = new Map();
-    for (const s of slots) {
-      if (!map.has(s.dateKey)) map.set(s.dateKey, []);
-      map.get(s.dateKey).push(s);
-    }
-    return [...map.entries()];
-  }, [slots]);
-
-  const daySlots = slots.filter((s) => s.dateKey === day);
+  const availableKeys = useMemo(() => new Set(slots.map((s) => s.dateKey)), [slots]);
+  const daySlots = day ? slots.filter((s) => s.dateKey === day) : [];
   const visible = bookings.filter((b) => b.status === "confirmed");
   const upcoming = visible
     .filter((b) => new Date(b.start) > new Date())
     .sort((a, b) => new Date(a.start) - new Date(b.start));
+  const past = visible
+    .filter((b) => new Date(b.start) <= new Date())
+    .sort((a, b) => new Date(b.start) - new Date(a.start));
   const next = upcoming[0];
+  const meRows = meList === "upcoming" ? upcoming : past;
 
-  async function confirm() {
+  async function confirmBook() {
     if (!pick) return;
     setBusy(true);
-    setError("");
     try {
       const { booking } = await api.book(pick.start);
       setSlots((cur) => cur.filter((s) => s.start !== pick.start));
       setBookings((cur) => [...cur, booking]);
       setPick(null);
-      toast(tr("added"));
+      setSheet(null);
+      toast(tr("success"));
       setTab("home");
       load();
     } catch (err) {
-      setError(err.message === "taken" ? tr("taken") : tr("error"));
+      toast(bookError(err, tr), "err");
+      setPick(null);
+      load();
     } finally {
       setBusy(false);
     }
   }
 
   async function cancel(id) {
-    setBookings((cur) => cur.filter((b) => b.id !== id));
-    toast(tr("removed"), "gone");
+    setBusy(true);
     try {
       await api.cancel(id);
+      setBookings((cur) => cur.map((b) => (b.id === id ? { ...b, status: "cancelled" } : b)));
+      setSheet(null);
+      toast(tr("removed"), "gone");
       load();
     } catch {
+      toast(tr("error"), "err");
       load();
+    } finally {
+      setBusy(false);
     }
   }
 
   async function pay(id) {
+    setBusy(true);
     try {
-      const key = `pay_${id}_${user.id}`;
+      const key = `pay_${id}_${profile.id}`;
       const result = await api.demoPay(id, key);
       setBookings((cur) => cur.map((b) => (b.id === id ? result.booking : b)));
-      toast(tr("paid"));
+      setSheet(null);
+      toast(tr("success"));
       load();
     } catch {
-      toast(tr("failed"), "gone");
+      toast(tr("failed"), "err");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function saveProfile() {
+    setBusy(true);
+    try {
+      const result = await api.updateMe(form);
+      setProfile(result.user);
+      setSheet(null);
+      toast(tr("saved"));
+    } catch {
+      toast(tr("error"), "err");
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -107,12 +147,109 @@ export default function Client({ lang, tr, user, action, onLogout }) {
     { id: "me", icon: "me", label: tr("me") },
   ];
   const titles = { home: tr("nextSession"), book: tr("book"), me: tr("me") };
+  const who = (b) => (lang === "he" ? b.provider?.name : b.provider?.nameEn || b.provider?.name);
 
   return (
-    <Shell title={titles[tab]} action={action} tabs={tabs} tab={tab} onTab={setTab}>
-      {loading ? <p className="loading">…</p> : null}
+    <Shell
+      title={titles[tab]}
+      action={action}
+      tabs={tabs}
+      tab={tab}
+      onTab={setTab}
+      overlay={
+        <>
+          {sheet?.kind === "date" ? (
+            <DateSheet
+              lang={lang}
+              tr={tr}
+              selected={day || todayKey()}
+              availableKeys={availableKeys}
+              onPick={(key) => {
+                setDay(key);
+                setPick(null);
+                api.slots(key).then((s) => {
+                  setSlots((cur) => {
+                    const rest = cur.filter((x) => x.dateKey !== key);
+                    return rest.concat(s.slots);
+                  });
+                });
+              }}
+              onClose={() => setSheet(null)}
+            />
+          ) : null}
 
-      {tab === "home" ? (
+          {sheet?.kind === "book" && pick ? (
+            <ConfirmSheet
+              title={tr("confirmBookTitle")}
+              body={`${formatDateLong(day, lang)} · ${formatTime(pick.start)} · ${tr("bookWith")}`}
+              confirm={tr("confirmBook")}
+              cancel={tr("close")}
+              busy={busy}
+              onConfirm={confirmBook}
+              onClose={() => setSheet(null)}
+            />
+          ) : null}
+
+          {sheet?.kind === "cancel" ? (
+            <ConfirmSheet
+              title={tr("cancelAsk")}
+              body={tr("cancelBody")}
+              confirm={tr("cancelYes")}
+              cancel={tr("cancelNo")}
+              danger
+              busy={busy}
+              onConfirm={() => cancel(sheet.booking.id)}
+              onClose={() => setSheet(null)}
+            />
+          ) : null}
+
+          {sheet?.kind === "pay" ? (
+            <Sheet title={tr("payTitle")} onClose={() => setSheet(null)}>
+              <p className="lede">{tr("payBody")}</p>
+              <div className="demo-pay-card">
+                <span className="pay">{tr("demoBadge")}</span>
+                <strong>₪0</strong>
+                <span className="meta">{tr("demoPayNote")}</span>
+              </div>
+              <button className="btn full" type="button" disabled={busy} onClick={() => pay(sheet.booking.id)}>
+                {tr("payConfirm")}
+              </button>
+            </Sheet>
+          ) : null}
+
+          {sheet?.kind === "profile" ? (
+            <Sheet title={tr("editProfile")} onClose={() => setSheet(null)}>
+              <form
+                className="stack"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  saveProfile();
+                }}
+              >
+                <label>
+                  {tr("name")}
+                  <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+                </label>
+                <label>
+                  {tr("phone")}
+                  <input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} inputMode="tel" />
+                </label>
+                <label>
+                  {tr("city")}
+                  <input value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} />
+                </label>
+                <button className="btn full" disabled={busy} type="submit">
+                  {tr("save")}
+                </button>
+              </form>
+            </Sheet>
+          ) : null}
+        </>
+      }
+    >
+      {loading ? <Skeleton rows={4} /> : null}
+
+      {!loading && tab === "home" ? (
         <div className="pane stack">
           {reminders[0] ? (
             <div className="warn">
@@ -125,7 +262,19 @@ export default function Client({ lang, tr, user, action, onLogout }) {
               <>
                 <h2>{formatDateTime(next.start, lang)}</h2>
                 <div className="who">
-                  {tr("withCoach")} {lang === "he" ? next.provider?.name : next.provider?.nameEn}
+                  {tr("withCoach")} {who(next)}
+                </div>
+                <div className="hero-actions">
+                  <button className="btn tiny light" type="button" onClick={() => setSheet({ kind: "cancel", booking: next })}>
+                    {tr("cancel")}
+                  </button>
+                  {next.paymentStatus !== "paid" ? (
+                    <button className="btn tiny light" type="button" onClick={() => setSheet({ kind: "pay", booking: next })}>
+                      {tr("payDemo")}
+                    </button>
+                  ) : (
+                    <span className="pay">{tr("paid")}</span>
+                  )}
                 </div>
               </>
             ) : (
@@ -139,7 +288,7 @@ export default function Client({ lang, tr, user, action, onLogout }) {
                 <div className="item" key={b.id}>
                   <div>
                     <h4>{formatDateTime(b.start, lang)}</h4>
-                    <div className="meta">{lang === "he" ? b.provider?.name : b.provider?.nameEn}</div>
+                    <div className="meta">{who(b)}</div>
                   </div>
                 </div>
               ))}
@@ -148,77 +297,104 @@ export default function Client({ lang, tr, user, action, onLogout }) {
         </div>
       ) : null}
 
-      {tab === "book" ? (
-        <div className="pane">
-          <div className="section-label">{tr("pickDay")}</div>
-          <div className="chip-row">
-            {days.map(([key, rows]) => (
-              <button
-                key={key}
-                type="button"
-                className={`chip ${day === key ? "on" : ""}`}
-                onClick={() => {
-                  setDay(key);
-                  setPick(null);
-                }}
-              >
-                {formatDate(rows[0].start, lang)}
-              </button>
-            ))}
-          </div>
-          {days.length === 0 ? <div className="empty">{tr("emptySlots")}</div> : null}
-
-          <div className="section-label">{tr("pickTime")}</div>
-          <div className="chip-row">
-            {daySlots.map((s) => (
-              <button
-                key={s.start}
-                type="button"
-                className={`chip ${pick?.start === s.start ? "on" : ""}`}
-                onClick={() => setPick(s)}
-              >
-                {formatTime(s.start)}
-              </button>
-            ))}
-          </div>
-          {error ? <p className="error">{error}</p> : null}
-          <button className="btn full" type="button" disabled={!pick || busy} onClick={confirm} style={{ marginTop: 12 }}>
-            {tr("confirmBook")}
-            {pick ? ` · ${formatTime(pick.start)}` : ""}
+      {!loading && tab === "book" ? (
+        <div className="pane stack">
+          <button
+            className="date-trigger"
+            type="button"
+            onClick={() => setSheet({ kind: "date" })}
+          >
+            <span>
+              <div className="kicker-ink">{tr("pickDate")}</div>
+              {day ? formatDateLong(day, lang) : tr("pickDateCta")}
+            </span>
+            <span className="chev">{lang === "he" ? "‹" : "›"}</span>
           </button>
-          <p className="meta" style={{ marginTop: 14 }}>
-            {tr("calLater")}
-          </p>
+
+          {day ? (
+            <>
+              <div className="section-label">{tr("freeToday")}</div>
+              {daySlots.length === 0 ? <div className="empty">{tr("emptyDaySlots")}</div> : null}
+              <div className="time-grid">
+                {daySlots.map((s) => (
+                  <button
+                    key={s.start}
+                    type="button"
+                    className={`time-chip ${pick?.start === s.start ? "on" : ""}`}
+                    onClick={() => setPick(s)}
+                  >
+                    {formatTime(s.start)}
+                  </button>
+                ))}
+              </div>
+              <button
+                className="btn full"
+                type="button"
+                disabled={!pick || busy}
+                onClick={() => setSheet({ kind: "book" })}
+              >
+                {tr("confirmBook")}
+                {pick ? ` · ${formatTime(pick.start)}` : ""}
+              </button>
+            </>
+          ) : (
+            <div className="empty">{tr("pickDateFirst")}</div>
+          )}
+          <p className="meta">{tr("calLater")}</p>
         </div>
       ) : null}
 
-      {tab === "me" ? (
+      {!loading && tab === "me" ? (
         <div className="pane">
-          <p className="profile-name">{lang === "he" ? user.name : user.nameEn || user.name}</p>
-          <p className="meta">{user.email}</p>
+          <p className="profile-name">{lang === "he" ? profile.name : profile.nameEn || profile.name}</p>
+          <p className="meta">{profile.email}</p>
+          <p className="meta">
+            {profile.phone || tr("noPhone")}
+            {profile.city ? ` · ${lang === "he" ? profile.city : profile.cityEn || profile.city}` : ""}
+          </p>
+          <button
+            className="ghost"
+            type="button"
+            onClick={() => {
+              setForm({ name: profile.name, phone: profile.phone || "", city: profile.city || "" });
+              setSheet({ kind: "profile" });
+            }}
+          >
+            {tr("editProfile")}
+          </button>
+
           <div className="section-label">{tr("myBookings")}</div>
-          {visible.length === 0 ? <div className="empty">{tr("emptyBookings")}</div> : null}
+          <Segment
+            value={meList}
+            onChange={setMeList}
+            options={[
+              { id: "upcoming", label: tr("upcoming") },
+              { id: "past", label: tr("past") },
+            ]}
+          />
+          {meRows.length === 0 ? (
+            <div className="empty">{meList === "upcoming" ? tr("emptyBookings") : tr("emptyPast")}</div>
+          ) : null}
           <div className="list">
-            {visible.map((b) => (
-              <div className="item" key={b.id}>
-                <div>
-                  <h4>{formatDateTime(b.start, lang)}</h4>
-                  <div className="meta">
-                    <span className={`pay ${b.paymentStatus === "paid" ? "" : "unpaid"}`}>{payLabel(tr, b.paymentStatus)}</span>
+            {meRows.map((b) => (
+              <div className="item col" key={b.id}>
+                <div className="item-main">
+                  <div>
+                    <h4>{formatDateTime(b.start, lang)}</h4>
+                    <div className="meta">{who(b)}</div>
                   </div>
+                  <span className={`pay ${b.paymentStatus === "paid" ? "" : "unpaid"}`}>{payLabel(tr, b.paymentStatus)}</span>
                 </div>
-                <div className="row">
-                  {new Date(b.start) > new Date() && b.paymentStatus !== "paid" ? (
-                    <button className="btn tiny" type="button" onClick={() => pay(b.id)}>
-                      {tr("payDemo")}
-                    </button>
-                  ) : null}
-                  {new Date(b.start) > new Date() ? (
+                {meList === "upcoming" ? (
+                  <div className="row">
+                    {b.paymentStatus !== "paid" ? (
+                      <button className="btn tiny" type="button" onClick={() => setSheet({ kind: "pay", booking: b })}>
+                        {tr("payDemo")}
+                      </button>
+                    ) : null}
                     <button className="btn tiny" type="button" onClick={() => downloadIcs(b)}>
                       {tr("addToCal")}
                     </button>
-                  ) : null}
-                  {new Date(b.start) > new Date() ? (
                     <button
                       className="btn tiny"
                       type="button"
@@ -232,13 +408,11 @@ export default function Client({ lang, tr, user, action, onLogout }) {
                     >
                       {tr("remindMe")}
                     </button>
-                  ) : null}
-                  {new Date(b.start) > new Date() ? (
-                    <button className="btn tiny" type="button" onClick={() => cancel(b.id)}>
+                    <button className="btn tiny" type="button" onClick={() => setSheet({ kind: "cancel", booking: b })}>
                       {tr("cancel")}
                     </button>
-                  ) : null}
-                </div>
+                  </div>
+                ) : null}
               </div>
             ))}
           </div>
@@ -248,6 +422,7 @@ export default function Client({ lang, tr, user, action, onLogout }) {
           </button>
         </div>
       ) : null}
+
     </Shell>
   );
 }

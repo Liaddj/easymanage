@@ -2,6 +2,7 @@ import { spawn } from "node:child_process";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { readdirSync, readFileSync, rmSync } from "node:fs";
+import { dateKey, monthGrid, parseDateKey } from "../shared/time.js";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const port = 3791;
@@ -79,8 +80,24 @@ try {
   });
   assert(client.status === 200 && client.data.user.role === "client", "client login");
 
+  assert(parseDateKey("2026-09-10")?.day === 10, "parse date key");
+  assert(!parseDateKey("nope"), "reject bad date key");
+  assert(monthGrid(2026, 9).filter(Boolean).length === 30, "sept 2026 grid");
+  assert(monthGrid(2028, 2).filter(Boolean).length === 29, "feb 2028 leap");
+
   const slots = await req("/api/slots", { token: client.data.token });
   assert(slots.data.slots.length > 0, "open slots");
+  const dayKey = slots.data.slots[0].dateKey;
+  const dayOnly = await req(`/api/slots?date=${dayKey}`, { token: client.data.token });
+  assert(dayOnly.status === 200, "day slots status");
+  assert(dayOnly.data.slots.length > 0, "day slots");
+  assert(dayOnly.data.slots.every((s) => s.dateKey === dayKey), "day slots filtered");
+  const badDate = await req("/api/slots?date=nope", { token: client.data.token });
+  assert(badDate.status === 400, "bad date rejected");
+  const emptyDay = await req(`/api/slots?date=${dateKey(new Date("1999-01-01T12:00:00Z"))}`, {
+    token: client.data.token,
+  });
+  assert(emptyDay.status === 200 && emptyDay.data.slots.length === 0, "past date no slots");
 
   const booked = await req("/api/bookings", {
     method: "POST",
@@ -101,6 +118,35 @@ try {
 
   const clients = await req("/api/clients", { token: coach.data.token });
   assert(clients.data.clients.length >= 1, "provider clients");
+  assert(clients.data.clients.some((row) => row.client.phone), "client phone field");
+
+  const patched = await req("/api/me", {
+    method: "PATCH",
+    token: client.data.token,
+    body: { phone: "052-9999999", city: "גבעתיים" },
+  });
+  assert(patched.status === 200 && patched.data.user.phone === "052-9999999", "update profile");
+
+  const added = await req("/api/clients", {
+    method: "POST",
+    token: coach.data.token,
+    body: { name: "עדי כהן", email: "adi@flow.demo", phone: "050-1111111", notes: "בוקר" },
+  });
+  assert(added.status === 201 && added.data.client.name === "עדי כהן", "add client");
+
+  const noted = await req(`/api/clients/${added.data.client.id}`, {
+    method: "PATCH",
+    token: coach.data.token,
+    body: { notes: "מעדיפה בוקר" },
+  });
+  assert(noted.status === 200 && noted.data.client.notes === "מעדיפה בוקר", "client notes");
+
+  const nestedCard = await req("/api/payments/demo-charge", {
+    method: "POST",
+    token: client.data.token,
+    body: { bookingId: "x", card: { number: "4242424242424242", cvv: "123" } },
+  });
+  assert(nestedCard.status === 400 && nestedCard.data.error === "cards_not_accepted", "reject nested cards");
 
   const cards = await req("/api/payments/demo-charge", {
     method: "POST",
