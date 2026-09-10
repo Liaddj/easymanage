@@ -70,6 +70,7 @@ export default function Client({ lang, tr, user, action, onLogout }) {
       setPick(null);
       toast(tr("added"));
       setTab("home");
+      load();
     } catch (err) {
       setError(err.message === "taken" ? tr("taken") : tr("error"));
     } finally {
@@ -82,6 +83,7 @@ export default function Client({ lang, tr, user, action, onLogout }) {
     toast(tr("removed"), "gone");
     try {
       await api.cancel(id);
+      load();
     } catch {
       load();
     }
@@ -93,6 +95,7 @@ export default function Client({ lang, tr, user, action, onLogout }) {
       const result = await api.demoPay(id, key);
       setBookings((cur) => cur.map((b) => (b.id === id ? result.booking : b)));
       toast(tr("paid"));
+      load();
     } catch {
       toast(tr("failed"), "gone");
     }

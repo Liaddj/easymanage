@@ -69,6 +69,7 @@ export default function Provider({ lang, tr, user, action, onLogout }) {
     try {
       const next = await api.toggleAvailability(weekday, hour);
       setSlots(next.slots);
+      load();
     } catch {
       load();
     }
@@ -79,6 +80,7 @@ export default function Provider({ lang, tr, user, action, onLogout }) {
     toast(tr("removed"), "gone");
     try {
       await api.cancel(id);
+      load();
     } catch {
       load();
     }

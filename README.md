@@ -2,7 +2,7 @@
 
 Dual-sided booking for solo fitness and tennis coaches. Hebrew-first UI, timezone `Asia/Jerusalem`.
 
-This demo has **no payments**, invoices, or marketplace. Google Calendar is intentionally disabled.
+This demo has **sandbox/mock payments only** (no PAN/CVV, no invoices, no real money). Google Calendar OAuth is off; ICS export is available.
 
 ## Stack
 

@@ -21,7 +21,7 @@ html, body, #root {
 body {
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display",
     "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  background: #e5e5ea;
+  background: #dce8e4;
   color: var(--ink);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
@@ -197,8 +197,8 @@ input:focus { outline: none; background: var(--fill-2); }
 .hero-next .who { color: rgba(255,255,255,0.62); font-size: 15px; }
 
 .warn {
-  background: var(--fill);
-  color: var(--ink);
+  background: var(--accent-soft);
+  color: #134e4a;
   border-radius: 12px;
   padding: 12px 14px;
   font-size: 14px;

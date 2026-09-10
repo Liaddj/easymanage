@@ -60,14 +60,20 @@ if (!GATE_DISABLED) {
 }
 
 const api = express.Router();
+api.use((req, res, next) => {
+  if (rejectCardFields(req.body) || rejectCardFields(req.query)) {
+    return res.status(400).json({ error: "cards_not_accepted" });
+  }
+  next();
+});
 
 api.get("/health", (_req, res) => {
   res.json({
     ok: true,
     tz: "Asia/Jerusalem",
     calendar: "ics",
-    payments: "demo",
-    note: "Google Calendar OAuth is off. Export ICS or use in-app reminders. Payments are demo-only — no cards.",
+    payments: "sandbox",
+    note: "Google Calendar OAuth is off. Export ICS or use in-app reminders. Payments are sandbox/mock only — no cards, no invoices, no money movement.",
   });
 });
 
@@ -193,7 +199,7 @@ api.post("/payments/demo-charge", requireUser, (req, res) => {
       bookingId: req.body?.bookingId,
       idempotencyKey: req.body?.idempotencyKey,
     });
-    res.json({ ...result, mode: "demo", note: "דמו תשלום — no cards collected" });
+    res.json({ ...result, mode: "sandbox", note: "דמו תשלום — sandbox only, no cards, no money" });
   } catch (err) {
     const map = { not_found: 404, forbidden: 403, cancelled: 400, missing_fields: 400 };
     res.status(map[err.message] || 400).json({ error: err.message });

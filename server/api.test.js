@@ -1,7 +1,7 @@
 import { spawn } from "node:child_process";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { rmSync } from "node:fs";
+import { readdirSync, readFileSync, rmSync } from "node:fs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const port = 3791;
@@ -114,7 +114,7 @@ try {
     token: client.data.token,
     body: { bookingId: booked.data.booking.id, idempotencyKey: "k1" },
   });
-  assert(pay.status === 200 && pay.data.booking.paymentStatus === "paid", "demo pay");
+  assert(pay.status === 200 && pay.data.booking.paymentStatus === "paid" && pay.data.mode === "sandbox", "demo pay");
 
   const replay = await req("/api/payments/demo-charge", {
     method: "POST",
@@ -137,6 +137,21 @@ try {
 
   const cardPath = await req("/api/card", { token: client.data.token });
   assert(cardPath.status === 404, "no card route");
+
+  function walk(dir) {
+    const out = [];
+    for (const name of readdirSync(dir, { withFileTypes: true })) {
+      const p = join(dir, name.name);
+      if (name.isDirectory()) out.push(...walk(p));
+      else if (/\.(js|jsx|html|css)$/.test(name.name)) out.push(p);
+    }
+    return out;
+  }
+  const forbidden = /autocomplete=["']cc-|[^a-z]name=["'](card|cvv|cvc|pan|cardNumber)["']|invoice|refund/i;
+  for (const file of walk(join(root, "web", "src"))) {
+    const text = readFileSync(file, "utf8");
+    assert(!forbidden.test(text), `ship-stop card/invoice field in ${file}`);
+  }
 
   console.log("api tests passed");
   child.kill("SIGTERM");
