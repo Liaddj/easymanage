@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { api } from "../api.js";
 import { formatDateTime, weekdayName } from "@shared/time.js";
+import { toast } from "../Toast.jsx";
 import Shell from "../Shell.jsx";
 
 const HOURS = Array.from({ length: 14 }, (_, i) => i + 7);
@@ -11,6 +12,7 @@ export default function Provider({ lang, tr, user, action, onLogout }) {
   const [slots, setSlots] = useState([]);
   const [bookings, setBookings] = useState([]);
   const [clients, setClients] = useState([]);
+  const [invite, setInvite] = useState(null);
   const [reminders, setReminders] = useState({ banners: [], log: [] });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
@@ -36,11 +38,18 @@ export default function Provider({ lang, tr, user, action, onLogout }) {
 
   async function load() {
     try {
-      const [a, b, c, r] = await Promise.all([api.availability(), api.bookings(), api.clients(), api.reminders()]);
+      const [a, b, c, r, inv] = await Promise.all([
+        api.availability(),
+        api.bookings(),
+        api.clients(),
+        api.reminders(),
+        api.invite(),
+      ]);
       setSlots(a.slots);
       setBookings(b.bookings);
       setClients(c.clients);
       setReminders(r);
+      setInvite(inv);
     } catch {
       setError(tr("error"));
     } finally {
@@ -53,18 +62,26 @@ export default function Provider({ lang, tr, user, action, onLogout }) {
   }, []);
 
   async function toggle(weekday, hour) {
-    setError("");
+    const keyMatch = (s) => s.weekday === weekday && s.hour === hour;
+    const exists = slots.some(keyMatch);
+    setSlots((cur) => (exists ? cur.filter((s) => !keyMatch(s)) : cur.concat([{ weekday, hour }])));
+    toast(exists ? tr("hourClosed") : tr("hourOpen"), exists ? "gone" : "ok");
     try {
       const next = await api.toggleAvailability(weekday, hour);
       setSlots(next.slots);
     } catch {
-      setError(tr("error"));
+      load();
     }
   }
 
   async function cancel(id) {
-    await api.cancel(id);
-    await load();
+    setBookings((cur) => cur.filter((b) => b.id !== id));
+    toast(tr("removed"), "gone");
+    try {
+      await api.cancel(id);
+    } catch {
+      load();
+    }
   }
 
   const upcoming = bookings.filter((b) => b.status === "confirmed" && new Date(b.start) > new Date());
@@ -82,6 +99,11 @@ export default function Provider({ lang, tr, user, action, onLogout }) {
     me: tr("me"),
   };
 
+  function inviteUrl() {
+    const base = `${window.location.origin}${window.location.pathname}`;
+    return `${base}#/join/${invite?.code || "FLOWNOA"}`;
+  }
+
   return (
     <Shell title={titles[tab]} action={action} tabs={tabs} tab={tab} onTab={setTab}>
       {error ? <p className="error">{error}</p> : null}
@@ -94,13 +116,18 @@ export default function Provider({ lang, tr, user, action, onLogout }) {
               {tr("reminderSoon")} · {lang === "he" ? reminders.banners[0].booking.client?.name : reminders.banners[0].booking.client?.nameEn}
             </div>
           ) : null}
-          {upcoming.length === 0 ? <p className="meta">{tr("emptyBookings")}</p> : null}
+          {upcoming.length === 0 ? <div className="empty">{tr("emptyBookings")}</div> : null}
           <div className="list">
             {upcoming.map((b) => (
               <div className="item" key={b.id}>
                 <div>
                   <h4>{lang === "he" ? b.client?.name : b.client?.nameEn || b.client?.name}</h4>
-                  <div className="meta">{formatDateTime(b.start, lang)}</div>
+                  <div className="meta">
+                    {formatDateTime(b.start, lang)} ·{" "}
+                    <span className={`pay ${b.paymentStatus === "paid" ? "" : "unpaid"}`}>
+                      {b.paymentStatus === "paid" ? tr("paid") : tr("unpaid")}
+                    </span>
+                  </div>
                 </div>
                 <button className="btn tiny" type="button" onClick={() => cancel(b.id)}>
                   {tr("cancel")}
@@ -135,7 +162,26 @@ export default function Provider({ lang, tr, user, action, onLogout }) {
 
       {tab === "clients" ? (
         <div className="pane">
-          {clients.length === 0 ? <p className="meta">{tr("emptyClients")}</p> : null}
+          <div className="card stack">
+            <div className="section-label" style={{ marginTop: 0 }}>{tr("invite")}</div>
+            <p className="meta">{tr("inviteHint")}</p>
+            <div className="code">{invite?.code || "—"}</div>
+            <button
+              className="btn secondary full"
+              type="button"
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(inviteUrl());
+                  toast(tr("copied"));
+                } catch {
+                  toast(inviteUrl());
+                }
+              }}
+            >
+              {tr("copyLink")}
+            </button>
+          </div>
+          {clients.length === 0 ? <div className="empty" style={{ marginTop: 14 }}>{tr("emptyInvite")}</div> : null}
           <div className="list">
             {clients.map((row) => (
               <div className="item" key={row.client.id}>
@@ -143,6 +189,7 @@ export default function Provider({ lang, tr, user, action, onLogout }) {
                   <h3>{lang === "he" ? row.client.name : row.client.nameEn || row.client.name}</h3>
                   <div className="meta">
                     {row.upcoming ? formatDateTime(row.upcoming.start, lang) : "—"}
+                    {row.upcoming ? ` · ${row.upcoming.paymentStatus === "paid" ? tr("paid") : tr("unpaid")}` : ""}
                   </div>
                 </div>
                 <span className="badge">{row.total}</span>
@@ -156,7 +203,7 @@ export default function Provider({ lang, tr, user, action, onLogout }) {
         <div className="pane">
           <p className="profile-name">{lang === "he" ? user.name : user.nameEn || user.name}</p>
           <p className="meta">{user.email}</p>
-          <p className="meta" style={{ marginTop: 8 }}>{tr("calNote")}</p>
+          <p className="meta" style={{ marginTop: 8 }}>{tr("calLater")}</p>
           <div className="section-label">{tr("reminderLog")}</div>
           {reminders.log.length === 0 ? <p className="meta">{tr("noReminders")}</p> : null}
           <div className="list">

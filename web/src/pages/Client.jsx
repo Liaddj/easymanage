@@ -1,7 +1,23 @@
 import { useEffect, useMemo, useState } from "react";
 import { api } from "../api.js";
+import { downloadIcs } from "@shared/ics.js";
 import { formatDate, formatDateTime, formatTime } from "@shared/time.js";
+import { toast } from "../Toast.jsx";
 import Shell from "../Shell.jsx";
+
+function payLabel(tr, status) {
+  if (status === "paid") return tr("paid");
+  if (status === "failed") return tr("failed");
+  return tr("unpaid");
+}
+
+function scheduleLocalReminder(booking, tr) {
+  const ms = new Date(booking.start).getTime() - Date.now() - 30 * 60 * 1000;
+  if (ms < 500 || ms > 24 * 3600 * 1000) return;
+  if (!("Notification" in window)) return;
+  const fire = () => new Notification(tr("reminder"), { body: formatDateTime(booking.start) });
+  if (Notification.permission === "granted") setTimeout(fire, ms);
+}
 
 export default function Client({ lang, tr, user, action, onLogout }) {
   const [tab, setTab] = useState("home");
@@ -37,8 +53,9 @@ export default function Client({ lang, tr, user, action, onLogout }) {
   }, [slots]);
 
   const daySlots = slots.filter((s) => s.dateKey === day);
-  const upcoming = bookings
-    .filter((b) => b.status === "confirmed" && new Date(b.start) > new Date())
+  const visible = bookings.filter((b) => b.status === "confirmed");
+  const upcoming = visible
+    .filter((b) => new Date(b.start) > new Date())
     .sort((a, b) => new Date(a.start) - new Date(b.start));
   const next = upcoming[0];
 
@@ -47,9 +64,11 @@ export default function Client({ lang, tr, user, action, onLogout }) {
     setBusy(true);
     setError("");
     try {
-      await api.book(pick.start);
+      const { booking } = await api.book(pick.start);
+      setSlots((cur) => cur.filter((s) => s.start !== pick.start));
+      setBookings((cur) => [...cur, booking]);
       setPick(null);
-      await load();
+      toast(tr("added"));
       setTab("home");
     } catch (err) {
       setError(err.message === "taken" ? tr("taken") : tr("error"));
@@ -59,8 +78,24 @@ export default function Client({ lang, tr, user, action, onLogout }) {
   }
 
   async function cancel(id) {
-    await api.cancel(id);
-    await load();
+    setBookings((cur) => cur.filter((b) => b.id !== id));
+    toast(tr("removed"), "gone");
+    try {
+      await api.cancel(id);
+    } catch {
+      load();
+    }
+  }
+
+  async function pay(id) {
+    try {
+      const key = `pay_${id}_${user.id}`;
+      const result = await api.demoPay(id, key);
+      setBookings((cur) => cur.map((b) => (b.id === id ? result.booking : b)));
+      toast(tr("paid"));
+    } catch {
+      toast(tr("failed"), "gone");
+    }
   }
 
   const tabs = [
@@ -68,7 +103,6 @@ export default function Client({ lang, tr, user, action, onLogout }) {
     { id: "book", icon: "book", label: tr("book") },
     { id: "me", icon: "me", label: tr("me") },
   ];
-
   const titles = { home: tr("nextSession"), book: tr("book"), me: tr("me") };
 
   return (
@@ -95,6 +129,7 @@ export default function Client({ lang, tr, user, action, onLogout }) {
               <h2>{tr("noNext")}</h2>
             )}
           </section>
+          {!next ? <div className="empty">{tr("emptyHome")}</div> : null}
           {upcoming.length > 1 ? (
             <div className="list">
               {upcoming.slice(1).map((b) => (
@@ -128,7 +163,7 @@ export default function Client({ lang, tr, user, action, onLogout }) {
               </button>
             ))}
           </div>
-          {days.length === 0 ? <p className="meta">{tr("emptySlots")}</p> : null}
+          {days.length === 0 ? <div className="empty">{tr("emptySlots")}</div> : null}
 
           <div className="section-label">{tr("pickTime")}</div>
           <div className="chip-row">
@@ -149,7 +184,7 @@ export default function Client({ lang, tr, user, action, onLogout }) {
             {pick ? ` · ${formatTime(pick.start)}` : ""}
           </button>
           <p className="meta" style={{ marginTop: 14 }}>
-            {tr("calNote")}
+            {tr("calLater")}
           </p>
         </div>
       ) : null}
@@ -159,19 +194,48 @@ export default function Client({ lang, tr, user, action, onLogout }) {
           <p className="profile-name">{lang === "he" ? user.name : user.nameEn || user.name}</p>
           <p className="meta">{user.email}</p>
           <div className="section-label">{tr("myBookings")}</div>
-          {bookings.length === 0 ? <p className="meta">{tr("emptyBookings")}</p> : null}
+          {visible.length === 0 ? <div className="empty">{tr("emptyBookings")}</div> : null}
           <div className="list">
-            {bookings.map((b) => (
+            {visible.map((b) => (
               <div className="item" key={b.id}>
                 <div>
                   <h4>{formatDateTime(b.start, lang)}</h4>
-                  <div className="meta">{b.status === "cancelled" ? tr("cancelled") : tr("confirmed")}</div>
+                  <div className="meta">
+                    <span className={`pay ${b.paymentStatus === "paid" ? "" : "unpaid"}`}>{payLabel(tr, b.paymentStatus)}</span>
+                  </div>
                 </div>
-                {b.status === "confirmed" && new Date(b.start) > new Date() ? (
-                  <button className="btn tiny" type="button" onClick={() => cancel(b.id)}>
-                    {tr("cancel")}
-                  </button>
-                ) : null}
+                <div className="row">
+                  {new Date(b.start) > new Date() && b.paymentStatus !== "paid" ? (
+                    <button className="btn tiny" type="button" onClick={() => pay(b.id)}>
+                      {tr("payDemo")}
+                    </button>
+                  ) : null}
+                  {new Date(b.start) > new Date() ? (
+                    <button className="btn tiny" type="button" onClick={() => downloadIcs(b)}>
+                      {tr("addToCal")}
+                    </button>
+                  ) : null}
+                  {new Date(b.start) > new Date() ? (
+                    <button
+                      className="btn tiny"
+                      type="button"
+                      onClick={async () => {
+                        if ("Notification" in window && Notification.permission !== "granted") {
+                          await Notification.requestPermission();
+                        }
+                        scheduleLocalReminder(b, tr);
+                        toast(tr("remindOn"));
+                      }}
+                    >
+                      {tr("remindMe")}
+                    </button>
+                  ) : null}
+                  {new Date(b.start) > new Date() ? (
+                    <button className="btn tiny" type="button" onClick={() => cancel(b.id)}>
+                      {tr("cancel")}
+                    </button>
+                  ) : null}
+                </div>
               </div>
             ))}
           </div>

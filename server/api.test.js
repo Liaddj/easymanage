@@ -102,8 +102,41 @@ try {
   const clients = await req("/api/clients", { token: coach.data.token });
   assert(clients.data.clients.length >= 1, "provider clients");
 
-  const pay = await req("/api/payment", { token: client.data.token });
-  assert(pay.status === 404, "no payment route");
+  const cards = await req("/api/payments/demo-charge", {
+    method: "POST",
+    token: client.data.token,
+    body: { bookingId: booked.data.booking.id, card: "4242424242424242", cvv: "123" },
+  });
+  assert(cards.status === 400 && cards.data.error === "cards_not_accepted", "reject cards");
+
+  const pay = await req("/api/payments/demo-charge", {
+    method: "POST",
+    token: client.data.token,
+    body: { bookingId: booked.data.booking.id, idempotencyKey: "k1" },
+  });
+  assert(pay.status === 200 && pay.data.booking.paymentStatus === "paid", "demo pay");
+
+  const replay = await req("/api/payments/demo-charge", {
+    method: "POST",
+    token: client.data.token,
+    body: { bookingId: booked.data.booking.id, idempotencyKey: "k1" },
+  });
+  assert(replay.status === 200 && replay.data.replayed === true, "idempotent pay");
+
+  const gone = await req(`/api/bookings/${booked.data.booking.id}/cancel`, {
+    method: "POST",
+    token: client.data.token,
+  });
+  assert(gone.status === 200 && gone.data.booking.status === "cancelled", "cancel");
+  const after = await req("/api/bookings", { token: client.data.token });
+  const still = after.data.bookings.find((b) => b.id === booked.data.booking.id);
+  assert(still.status === "cancelled", "cancelled persisted");
+
+  const invite = await req("/api/invite", { token: coach.data.token });
+  assert(invite.status === 200 && invite.data.code, "invite");
+
+  const cardPath = await req("/api/card", { token: client.data.token });
+  assert(cardPath.status === 404, "no card route");
 
   console.log("api tests passed");
   child.kill("SIGTERM");

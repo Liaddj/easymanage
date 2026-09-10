@@ -66,7 +66,25 @@ function nid(prefix) {
 }
 
 function emptyDb() {
-  return { users: [], availability: [], bookings: [], reminderLog: [] };
+  return { users: [], availability: [], bookings: [], reminderLog: [], invites: [], payments: [] };
+}
+
+function migrate(data) {
+  if (!data.invites) data.invites = [];
+  if (!data.payments) data.payments = [];
+  for (const b of data.bookings || []) {
+    if (!b.paymentStatus) {
+      b.paymentStatus = new Date(b.start) < new Date() && b.status === "confirmed" ? "paid" : "unpaid";
+    }
+  }
+  if (!data.invites.some((i) => i.providerId === "u_coach")) {
+    data.invites.push({
+      code: "FLOWNOA",
+      providerId: "u_coach",
+      createdAt: new Date().toISOString(),
+    });
+  }
+  return data;
 }
 
 export function loadDb() {
@@ -82,8 +100,11 @@ function saveDb(db) {
 function seedIfNeeded() {
   mkdirSync(DATA_DIR, { recursive: true });
   if (existsSync(DB_PATH)) {
-    const existing = loadDb();
-    if (existing.users?.length) return existing;
+    const existing = migrate(loadDb());
+    if (existing.users?.length) {
+      saveDb(existing);
+      return existing;
+    }
   }
 
   const users = DEMO_USERS.map((u) => ({
@@ -106,6 +127,7 @@ function seedIfNeeded() {
       start: slotStart(addDaysKey(today, -2), 9).toISOString(),
       end: slotStart(addDaysKey(today, -2), 10).toISOString(),
       status: "confirmed",
+      paymentStatus: "paid",
       createdAt: new Date().toISOString(),
     },
     {
@@ -115,6 +137,7 @@ function seedIfNeeded() {
       start: slotStart(addDaysKey(today, 1), 18).toISOString(),
       end: slotStart(addDaysKey(today, 1), 19).toISOString(),
       status: "confirmed",
+      paymentStatus: "unpaid",
       createdAt: new Date().toISOString(),
     },
     {
@@ -124,6 +147,7 @@ function seedIfNeeded() {
       start: slotStart(addDaysKey(today, 2), 8).toISOString(),
       end: slotStart(addDaysKey(today, 2), 9).toISOString(),
       status: "confirmed",
+      paymentStatus: "unpaid",
       createdAt: new Date().toISOString(),
     },
     {
@@ -133,6 +157,7 @@ function seedIfNeeded() {
       start: slotStart(addDaysKey(today, 3), 16).toISOString(),
       end: slotStart(addDaysKey(today, 3), 17).toISOString(),
       status: "confirmed",
+      paymentStatus: "unpaid",
       createdAt: new Date().toISOString(),
     },
   ];
@@ -147,7 +172,8 @@ function seedIfNeeded() {
       message: `תזכורת מתוזמנת לאימון ב-${b.start}`,
     }));
 
-  const db = { users, availability, bookings, reminderLog };
+  const invites = [{ code: "FLOWNOA", providerId: "u_coach", createdAt: new Date().toISOString() }];
+  const db = migrate({ users, availability, bookings, reminderLog, invites, payments: [] });
   saveDb(db);
   return db;
 }
@@ -173,7 +199,7 @@ export function login(email, password) {
   return { token: signToken(user.id), user: publicUser(user) };
 }
 
-export function register({ email, password, name, role }) {
+export function register({ email, password, name, role, inviteCode }) {
   refresh();
   const clean = String(email || "").trim().toLowerCase();
   if (!clean || !password || !name) {
@@ -182,6 +208,7 @@ export function register({ email, password, name, role }) {
   if (db.users.some((u) => u.email.toLowerCase() === clean)) {
     throw new Error("email_taken");
   }
+  const invite = inviteCode ? peekInvite(inviteCode) : null;
   const user = {
     id: nid("u"),
     role: role === "provider" ? "provider" : "client",
@@ -192,6 +219,7 @@ export function register({ email, password, name, role }) {
     cityEn: "",
     specialty: role === "provider" ? "אימון אישי" : "",
     specialtyEn: role === "provider" ? "Personal training" : "",
+    invitedBy: invite && role !== "provider" ? invite.providerId : null,
     password: hashPassword(password),
   };
   db.users.push(user);
@@ -288,6 +316,7 @@ function enrichBooking(b) {
     start: b.start,
     end: b.end,
     status: b.status,
+    paymentStatus: b.paymentStatus || "unpaid",
     createdAt: b.createdAt,
     client: client ? publicUser(client) : null,
     provider: provider ? publicUser(provider) : null,
@@ -321,6 +350,7 @@ export function createBooking(clientId, startIso) {
     start: start.toISOString(),
     end: new Date(start.getTime() + SLOT_MINUTES * 60000).toISOString(),
     status: "confirmed",
+    paymentStatus: "unpaid",
     createdAt: new Date().toISOString(),
   };
   db.bookings.push(booking);
@@ -347,6 +377,9 @@ export function listClients(providerId) {
     const cur = byClient.get(b.clientId) || [];
     cur.push(b);
     byClient.set(b.clientId, cur);
+  }
+  for (const u of db.users.filter((x) => x.role === "client" && x.invitedBy === providerId)) {
+    if (!byClient.has(u.id)) byClient.set(u.id, []);
   }
   return [...byClient.entries()].map(([clientId, rows]) => {
     const user = db.users.find((u) => u.id === clientId);
@@ -387,3 +420,83 @@ export function reminderLog(providerId) {
 export function defaultProviderId() {
   return "u_coach";
 }
+
+function peekInvite(code) {
+  const clean = String(code || "").replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
+  return db.invites.find((i) => i.code === clean) || null;
+}
+
+export function getInvite(code) {
+  refresh();
+  const invite = peekInvite(code);
+  if (!invite) return null;
+  const provider = db.users.find((u) => u.id === invite.providerId);
+  return { code: invite.code, provider: provider ? publicUser(provider) : null };
+}
+
+export function coachInvite(providerId) {
+  refresh();
+  let invite = db.invites.find((i) => i.providerId === providerId);
+  if (!invite) {
+    invite = { code: randomBytes(3).toString("hex").toUpperCase(), providerId, createdAt: new Date().toISOString() };
+    db.invites.push(invite);
+    persist();
+  }
+  const provider = db.users.find((u) => u.id === providerId);
+  return { code: invite.code, provider: provider ? publicUser(provider) : null };
+}
+
+export function redeemInvite(user, code) {
+  refresh();
+  const invite = peekInvite(code);
+  if (!invite) throw new Error("bad_invite");
+  if (user.role !== "client") throw new Error("clients_only");
+  const row = db.users.find((u) => u.id === user.id);
+  row.invitedBy = invite.providerId;
+  persist();
+  return { ok: true, provider: getInvite(code).provider };
+}
+
+export function bookingById(id) {
+  refresh();
+  const b = db.bookings.find((x) => x.id === id);
+  return b ? enrichBooking(b) : null;
+}
+
+const CARD_KEYS = /^(card|pan|cvv|cvc|number|exp|expiry|cardnumber|card_number)$/i;
+
+export function rejectCardFields(body) {
+  if (!body || typeof body !== "object") return false;
+  return Object.keys(body).some((k) => CARD_KEYS.test(k));
+}
+
+export function demoCharge(user, { bookingId, idempotencyKey }) {
+  refresh();
+  if (!bookingId || !idempotencyKey) throw new Error("missing_fields");
+  const booking = db.bookings.find((b) => b.id === bookingId);
+  if (!booking) throw new Error("not_found");
+  const allowed = user.role === "client" ? booking.clientId === user.id : booking.providerId === user.id;
+  if (!allowed) throw new Error("forbidden");
+  if (booking.status === "cancelled") throw new Error("cancelled");
+
+  const prior = db.payments.find((p) => p.idempotencyKey === String(idempotencyKey));
+  if (prior) {
+    return { booking: enrichBooking(booking), payment: prior, replayed: true };
+  }
+
+  const payment = {
+    id: nid("p"),
+    bookingId,
+    idempotencyKey: String(idempotencyKey),
+    status: "paid",
+    provider: "demo",
+    amount: 0,
+    currency: "ILS",
+    createdAt: new Date().toISOString(),
+  };
+  db.payments.push(payment);
+  booking.paymentStatus = "paid";
+  persist();
+  return { booking: enrichBooking(booking), payment, replayed: false };
+}
+

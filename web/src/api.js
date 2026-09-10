@@ -50,6 +50,12 @@ export const api = {
   cancel: (id) => request(`/bookings/${id}/cancel`, { method: "POST" }),
   clients: () => request("/clients"),
   reminders: () => request("/reminders"),
+  invite: () => request("/invite"),
+  inviteInfo: (code) => request(`/invite/${encodeURIComponent(code)}`),
+  redeemInvite: (code) => request("/invite/redeem", { method: "POST", body: { code } }),
+  demoPay: (bookingId, idempotencyKey) =>
+    request("/payments/demo-charge", { method: "POST", body: { bookingId, idempotencyKey } }),
+  icsUrl: (id) => `${apiRoot()}/bookings/${id}/ics`,
 };
 
 export function saveSession(result) {

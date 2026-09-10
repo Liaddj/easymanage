@@ -1,3 +1,5 @@
+import { ToastHost } from "./Toast.jsx";
+
 function Icon({ name }) {
   const common = { fill: "none", stroke: "currentColor", strokeWidth: "1.7", strokeLinecap: "round", strokeLinejoin: "round" };
   if (name === "home") {
@@ -74,6 +76,7 @@ export default function Shell({ title, action, children, tabs, tab, onTab, login
         {action}
       </header>
       <main className={`content ${login ? "login" : ""}`}>{children}</main>
+      <ToastHost />
       {tabs ? <TabBar tabs={tabs} active={tab} onChange={onTab} /> : null}
     </div>
   );

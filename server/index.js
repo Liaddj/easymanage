@@ -3,17 +3,24 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { timingSafeEqual } from "node:crypto";
 import express from "express";
+import { bookingToIcs } from "../shared/ics.js";
 import {
+  bookingById,
   cancelBooking,
+  coachInvite,
   createBooking,
   defaultProviderId,
+  demoCharge,
   getAvailability,
+  getInvite,
   getUserById,
   listBookingsForUser,
   listClients,
   listOpenSlots,
   login,
+  redeemInvite,
   register,
+  rejectCardFields,
   reminderLog,
   remindersFor,
   setAvailability,
@@ -58,8 +65,9 @@ api.get("/health", (_req, res) => {
   res.json({
     ok: true,
     tz: "Asia/Jerusalem",
-    calendar: "disabled",
-    note: "Google Calendar is stubbed and not connected in this demo.",
+    calendar: "ics",
+    payments: "demo",
+    note: "Google Calendar OAuth is off. Export ICS or use in-app reminders. Payments are demo-only — no cards.",
   });
 });
 
@@ -76,6 +84,7 @@ api.post("/auth/register", (req, res) => {
       password: req.body?.password,
       name: req.body?.name,
       role: req.body?.role,
+      inviteCode: req.body?.inviteCode,
     });
     res.status(201).json(result);
   } catch (err) {
@@ -145,10 +154,56 @@ api.get("/reminders", requireUser, (req, res) => {
   });
 });
 
+api.get("/invite", requireUser, requireProvider, (req, res) => {
+  res.json(coachInvite(req.user.id));
+});
+
+api.get("/invite/:code", (req, res) => {
+  const invite = getInvite(req.params.code);
+  if (!invite) return res.status(404).json({ error: "bad_invite" });
+  res.json(invite);
+});
+
+api.post("/invite/redeem", requireUser, (req, res) => {
+  try {
+    res.json(redeemInvite(req.user, req.body?.code));
+  } catch (err) {
+    const map = { bad_invite: 404, clients_only: 403 };
+    res.status(map[err.message] || 400).json({ error: err.message });
+  }
+});
+
+api.get("/bookings/:id/ics", requireUser, (req, res) => {
+  const booking = bookingById(req.params.id);
+  if (!booking) return res.status(404).json({ error: "not_found" });
+  const allowed =
+    req.user.role === "provider" ? booking.provider?.id === req.user.id : booking.client?.id === req.user.id;
+  if (!allowed) return res.status(403).json({ error: "forbidden" });
+  res.setHeader("Content-Type", "text/calendar; charset=utf-8");
+  res.setHeader("Content-Disposition", `attachment; filename="flow-${booking.id}.ics"`);
+  res.send(bookingToIcs(booking));
+});
+
+api.post("/payments/demo-charge", requireUser, (req, res) => {
+  if (rejectCardFields(req.body)) {
+    return res.status(400).json({ error: "cards_not_accepted" });
+  }
+  try {
+    const result = demoCharge(req.user, {
+      bookingId: req.body?.bookingId,
+      idempotencyKey: req.body?.idempotencyKey,
+    });
+    res.json({ ...result, mode: "demo", note: "דמו תשלום — no cards collected" });
+  } catch (err) {
+    const map = { not_found: 404, forbidden: 403, cancelled: 400, missing_fields: 400 };
+    res.status(map[err.message] || 400).json({ error: err.message });
+  }
+});
+
 app.use(`${mount}/api`, api);
 
 app.use((req, res, next) => {
-  if (/payment/i.test(req.path)) {
+  if (/\/(card|pan|cvv)\b/i.test(req.path)) {
     return res.status(404).json({ error: "not_found" });
   }
   next();

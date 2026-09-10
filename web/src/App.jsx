@@ -6,6 +6,7 @@ import Shell from "./Shell.jsx";
 import Login from "./pages/Login.jsx";
 import Provider from "./pages/Provider.jsx";
 import Client from "./pages/Client.jsx";
+import Join from "./pages/Join.jsx";
 
 export default function App() {
   const [lang, setLang] = useState(() => localStorage.getItem("flow_lang") || "he");
@@ -80,6 +81,10 @@ export default function App() {
             <Navigate to="/" replace />
           )
         }
+      />
+      <Route
+        path="/join/:code"
+        element={<Join lang={lang} tr={tr} user={user} onAuthed={onAuthed} action={langBtn} />}
       />
       <Route
         path="/client"
