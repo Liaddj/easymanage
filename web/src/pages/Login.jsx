@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { api } from "../api.js";
+import Shell from "../Shell.jsx";
 
-export default function Login({ lang, tr, onAuthed }) {
+export default function Login({ lang, tr, onAuthed, action }) {
+  const [more, setMore] = useState(false);
   const [mode, setMode] = useState("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -43,62 +45,60 @@ export default function Login({ lang, tr, onAuthed }) {
   }
 
   return (
-    <div className="auth-grid">
-      <section className="hero">
-        <p className="note">{tr("closedNote")}</p>
-        <h1>{tr("tagline")}</h1>
-        <p className="lede">{tr("noPayment")}</p>
-        <p className="note">{tr("tzNote")}</p>
-        <p className="note">{tr("calNote")}</p>
-      </section>
+    <Shell title={tr("brand")} action={action} login>
+      <div className="pane">
+        <h2 className="large-title">{tr("tagline")}</h2>
+        <p className="lede">{tr("tzNote")}</p>
 
-      <section className="card stack">
-        <h2 style={{ margin: 0 }}>{mode === "login" ? tr("loginTitle") : tr("register")}</h2>
-        <form className="stack" onSubmit={submit}>
-          {mode === "register" ? (
-            <label>
-              {tr("name")}
-              <input value={name} onChange={(e) => setName(e.target.value)} required autoComplete="name" />
-            </label>
-          ) : null}
-          <label>
-            {tr("email")}
-            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="username" />
-          </label>
-          <label>
-            {tr("password")}
-            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required autoComplete="current-password" />
-          </label>
-          {error ? <p className="error">{error}</p> : null}
-          <button className="btn full" disabled={busy} type="submit">
-            {mode === "login" ? tr("enter") : tr("createAccount")}
+        <p className="section-label">{tr("demoAs")}</p>
+        <div className="demo-row">
+          <button className="btn" type="button" disabled={busy} onClick={() => demo("coach")}>
+            {tr("demoCoach")}
           </button>
-        </form>
-        <div className="note" style={{ textAlign: "center" }}>
-          {tr("or")}
+          <button className="btn secondary" type="button" disabled={busy} onClick={() => demo("client")}>
+            {tr("demoClient")}
+          </button>
         </div>
-        <button className="btn secondary full" type="button" disabled={busy} onClick={() => demo("coach")}>
-          {tr("demoCoach")}
+
+        <button className="ghost" type="button" style={{ marginTop: 22 }} onClick={() => setMore(!more)}>
+          {tr("moreEmail")}
         </button>
-        <button className="btn clay full" type="button" disabled={busy} onClick={() => demo("client")}>
-          {tr("demoClient")}
-        </button>
-        <button
-          className="ghost"
-          type="button"
-          onClick={() => {
-            setMode(mode === "login" ? "register" : "login");
-            setError("");
-          }}
-        >
-          {mode === "login" ? tr("register") : tr("backLogin")}
-        </button>
-        <p className="meta">
-          {lang === "he"
-            ? "חשבונות הדגמה: coach@flow.demo / client@flow.demo · הסיסמה demo123"
-            : "Demo accounts: coach@flow.demo / client@flow.demo · password demo123"}
-        </p>
-      </section>
-    </div>
+
+        {more ? (
+          <form className="stack" style={{ marginTop: 14 }} onSubmit={submit}>
+            {mode === "register" ? (
+              <label>
+                {tr("name")}
+                <input value={name} onChange={(e) => setName(e.target.value)} required autoComplete="name" />
+              </label>
+            ) : null}
+            <label>
+              {tr("email")}
+              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="username" />
+            </label>
+            <label>
+              {tr("password")}
+              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required autoComplete="current-password" />
+            </label>
+            {error ? <p className="error">{error}</p> : null}
+            <button className="btn full" disabled={busy} type="submit">
+              {mode === "login" ? tr("enter") : tr("createAccount")}
+            </button>
+            <button
+              className="ghost"
+              type="button"
+              onClick={() => {
+                setMode(mode === "login" ? "register" : "login");
+                setError("");
+              }}
+            >
+              {mode === "login" ? tr("register") : tr("backLogin")}
+            </button>
+          </form>
+        ) : error ? (
+          <p className="error">{error}</p>
+        ) : null}
+      </div>
+    </Shell>
   );
 }

@@ -1,15 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { api } from "../api.js";
-import { dateKey, formatDate, formatDateTime, formatTime } from "@shared/time.js";
+import { formatDate, formatDateTime, formatTime } from "@shared/time.js";
+import Shell from "../Shell.jsx";
 
-export default function Client({ lang, tr }) {
-  const [tab, setTab] = useState("book");
+export default function Client({ lang, tr, user, action, onLogout }) {
+  const [tab, setTab] = useState("home");
   const [slots, setSlots] = useState([]);
   const [bookings, setBookings] = useState([]);
   const [reminders, setReminders] = useState([]);
   const [day, setDay] = useState("");
   const [pick, setPick] = useState(null);
-  const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -37,21 +37,20 @@ export default function Client({ lang, tr }) {
   }, [slots]);
 
   const daySlots = slots.filter((s) => s.dateKey === day);
-  const next = bookings
+  const upcoming = bookings
     .filter((b) => b.status === "confirmed" && new Date(b.start) > new Date())
-    .sort((a, b) => new Date(a.start) - new Date(b.start))[0];
+    .sort((a, b) => new Date(a.start) - new Date(b.start));
+  const next = upcoming[0];
 
   async function confirm() {
     if (!pick) return;
     setBusy(true);
     setError("");
-    setMessage("");
     try {
       await api.book(pick.start);
       setPick(null);
-      setMessage(tr("booked"));
       await load();
-      setTab("bookings");
+      setTab("home");
     } catch (err) {
       setError(err.message === "taken" ? tr("taken") : tr("error"));
     } finally {
@@ -64,111 +63,124 @@ export default function Client({ lang, tr }) {
     await load();
   }
 
+  const tabs = [
+    { id: "home", icon: "home", label: tr("home") },
+    { id: "book", icon: "book", label: tr("book") },
+    { id: "me", icon: "me", label: tr("me") },
+  ];
+
+  const titles = { home: tr("nextSession"), book: tr("book"), me: tr("me") };
+
   return (
-    <div className="stack">
-      {reminders.map((r) => (
-        <div className="warn" key={r.id}>
-          {tr("reminderSoon")} · {formatDateTime(r.booking.start, lang)}
-        </div>
-      ))}
+    <Shell title={titles[tab]} action={action} tabs={tabs} tab={tab} onTab={setTab}>
+      {loading ? <p className="loading">…</p> : null}
 
-      <section className="card next-card">
-        <div className="meta">{tr("nextSession")}</div>
-        {next ? (
-          <>
-            <h2>{formatDateTime(next.start, lang)}</h2>
-            <div>
-              {lang === "he" ? next.provider?.name : next.provider?.nameEn} ·{" "}
-              {lang === "he" ? next.provider?.specialty : next.provider?.specialtyEn}
+      {tab === "home" ? (
+        <div className="pane stack">
+          {reminders[0] ? (
+            <div className="warn">
+              {tr("reminderSoon")} · {formatDateTime(reminders[0].booking.start, lang)}
             </div>
-          </>
-        ) : (
-          <h2>{tr("noNext")}</h2>
-        )}
-      </section>
-
-      <div className="tabs">
-        <button type="button" className={tab === "book" ? "on" : ""} onClick={() => setTab("book")}>
-          {tr("book")}
-        </button>
-        <button type="button" className={tab === "bookings" ? "on" : ""} onClick={() => setTab("bookings")}>
-          {tr("myBookings")}
-        </button>
-      </div>
-
-      {loading ? <p className="loading">{lang === "he" ? "טוען…" : "Loading…"}</p> : null}
+          ) : null}
+          <section className="hero-next">
+            <div className="kicker">{tr("nextSession")}</div>
+            {next ? (
+              <>
+                <h2>{formatDateTime(next.start, lang)}</h2>
+                <div className="who">
+                  {tr("withCoach")} {lang === "he" ? next.provider?.name : next.provider?.nameEn}
+                </div>
+              </>
+            ) : (
+              <h2>{tr("noNext")}</h2>
+            )}
+          </section>
+          {upcoming.length > 1 ? (
+            <div className="list">
+              {upcoming.slice(1).map((b) => (
+                <div className="item" key={b.id}>
+                  <div>
+                    <h4>{formatDateTime(b.start, lang)}</h4>
+                    <div className="meta">{lang === "he" ? b.provider?.name : b.provider?.nameEn}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
 
       {tab === "book" ? (
-        <section className="card stack">
-          <div>
-            <h2 style={{ margin: "0 0 10px" }}>{tr("pickDay")}</h2>
-            <div className="chip-row">
-              {days.map(([key, rows]) => (
-                <button
-                  key={key}
-                  type="button"
-                  className={`chip ${day === key ? "on" : ""}`}
-                  onClick={() => {
-                    setDay(key);
-                    setPick(null);
-                  }}
-                >
-                  {formatDate(rows[0].start, lang)}
-                </button>
-              ))}
-            </div>
-            {days.length === 0 ? <p className="meta">{tr("emptySlots")}</p> : null}
+        <div className="pane">
+          <div className="section-label">{tr("pickDay")}</div>
+          <div className="chip-row">
+            {days.map(([key, rows]) => (
+              <button
+                key={key}
+                type="button"
+                className={`chip ${day === key ? "on" : ""}`}
+                onClick={() => {
+                  setDay(key);
+                  setPick(null);
+                }}
+              >
+                {formatDate(rows[0].start, lang)}
+              </button>
+            ))}
           </div>
-          <div>
-            <h2 style={{ margin: "0 0 10px" }}>{tr("pickTime")}</h2>
-            <div className="chip-row">
-              {daySlots.map((s) => (
-                <button
-                  key={s.start}
-                  type="button"
-                  className={`chip ${pick?.start === s.start ? "on" : ""}`}
-                  onClick={() => setPick(s)}
-                >
-                  {formatTime(s.start)}
-                </button>
-              ))}
-            </div>
+          {days.length === 0 ? <p className="meta">{tr("emptySlots")}</p> : null}
+
+          <div className="section-label">{tr("pickTime")}</div>
+          <div className="chip-row">
+            {daySlots.map((s) => (
+              <button
+                key={s.start}
+                type="button"
+                className={`chip ${pick?.start === s.start ? "on" : ""}`}
+                onClick={() => setPick(s)}
+              >
+                {formatTime(s.start)}
+              </button>
+            ))}
           </div>
           {error ? <p className="error">{error}</p> : null}
-          {message ? <p className="note">{message}</p> : null}
-          <button className="btn full" type="button" disabled={!pick || busy} onClick={confirm}>
+          <button className="btn full" type="button" disabled={!pick || busy} onClick={confirm} style={{ marginTop: 12 }}>
             {tr("confirmBook")}
-            {pick ? ` · ${formatDate(pick.start, lang)} ${formatTime(pick.start)}` : ""}
+            {pick ? ` · ${formatTime(pick.start)}` : ""}
           </button>
-          <p className="note">{tr("calNote")}</p>
-        </section>
-      ) : (
-        <section className="card">
+          <p className="meta" style={{ marginTop: 14 }}>
+            {tr("calNote")}
+          </p>
+        </div>
+      ) : null}
+
+      {tab === "me" ? (
+        <div className="pane">
+          <p className="profile-name">{lang === "he" ? user.name : user.nameEn || user.name}</p>
+          <p className="meta">{user.email}</p>
+          <div className="section-label">{tr("myBookings")}</div>
           {bookings.length === 0 ? <p className="meta">{tr("emptyBookings")}</p> : null}
           <div className="list">
             {bookings.map((b) => (
               <div className="item" key={b.id}>
                 <div>
                   <h4>{formatDateTime(b.start, lang)}</h4>
-                  <div className="meta">
-                    {lang === "he" ? b.provider?.name : b.provider?.nameEn} · {dateKey(new Date(b.start))}
-                  </div>
+                  <div className="meta">{b.status === "cancelled" ? tr("cancelled") : tr("confirmed")}</div>
                 </div>
-                <div className="row">
-                  <span className={`badge ${b.status === "cancelled" ? "gone" : ""}`}>
-                    {b.status === "cancelled" ? tr("cancelled") : tr("confirmed")}
-                  </span>
-                  {b.status === "confirmed" && new Date(b.start) > new Date() ? (
-                    <button className="btn tiny danger" type="button" onClick={() => cancel(b.id)}>
-                      {tr("cancel")}
-                    </button>
-                  ) : null}
-                </div>
+                {b.status === "confirmed" && new Date(b.start) > new Date() ? (
+                  <button className="btn tiny" type="button" onClick={() => cancel(b.id)}>
+                    {tr("cancel")}
+                  </button>
+                ) : null}
               </div>
             ))}
           </div>
-        </section>
-      )}
-    </div>
+          <div className="hairline" />
+          <button className="ghost" type="button" onClick={onLogout}>
+            {tr("logout")}
+          </button>
+        </div>
+      ) : null}
+    </Shell>
   );
 }

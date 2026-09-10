@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { api, clearSession, hasToken, readUser, saveSession } from "./api.js";
 import { t } from "./i18n.js";
+import Shell from "./Shell.jsx";
 import Login from "./pages/Login.jsx";
 import Provider from "./pages/Provider.jsx";
 import Client from "./pages/Client.jsx";
@@ -44,61 +45,53 @@ export default function App() {
     setUser(null);
   }
 
+  const langBtn = (
+    <button className="ghost" type="button" onClick={() => setLang(lang === "he" ? "en" : "he")}>
+      {tr("lang")}
+    </button>
+  );
+
   if (!ready) {
     return (
-      <div className="app-shell wrap">
-        <p className="lede">{lang === "he" ? "טוען…" : "Loading…"}</p>
-      </div>
+      <Shell title={tr("brand")} action={langBtn} login>
+        <p className="loading">{lang === "he" ? "…" : "…"}</p>
+      </Shell>
     );
   }
 
   return (
-    <div className="app-shell">
-      <div className="wrap">
-        <header className="topbar">
-          <div className="brand">
-            <div className="mark">●</div>
-            <div>
-              <div>{tr("brand")}</div>
-              <div className="userbar">
-                {user ? `${tr("hello")} ${lang === "he" ? user.name : user.nameEn || user.name}` : tr("tagline")}
-              </div>
-            </div>
-          </div>
-          <div className="row">
-            <button className="lang-btn" type="button" onClick={() => setLang(lang === "he" ? "en" : "he")}>
-              {tr("lang")}
-            </button>
-            {user ? (
-              <button className="ghost" type="button" onClick={logout}>
-                {tr("logout")}
-              </button>
-            ) : null}
-          </div>
-        </header>
-
-        <Routes>
-          <Route
-            path="/"
-            element={
-              user ? (
-                <Navigate to={user.role === "provider" ? "/coach" : "/client"} replace />
-              ) : (
-                <Login lang={lang} tr={tr} onAuthed={onAuthed} />
-              )
-            }
-          />
-          <Route
-            path="/coach"
-            element={user?.role === "provider" ? <Provider lang={lang} tr={tr} user={user} /> : <Navigate to="/" replace />}
-          />
-          <Route
-            path="/client"
-            element={user?.role === "client" ? <Client lang={lang} tr={tr} user={user} /> : <Navigate to="/" replace />}
-          />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </div>
-    </div>
+    <Routes>
+      <Route
+        path="/"
+        element={
+          user ? (
+            <Navigate to={user.role === "provider" ? "/coach" : "/client"} replace />
+          ) : (
+            <Login lang={lang} tr={tr} onAuthed={onAuthed} action={langBtn} />
+          )
+        }
+      />
+      <Route
+        path="/coach"
+        element={
+          user?.role === "provider" ? (
+            <Provider lang={lang} tr={tr} user={user} action={langBtn} onLogout={logout} />
+          ) : (
+            <Navigate to="/" replace />
+          )
+        }
+      />
+      <Route
+        path="/client"
+        element={
+          user?.role === "client" ? (
+            <Client lang={lang} tr={tr} user={user} action={langBtn} onLogout={logout} />
+          ) : (
+            <Navigate to="/" replace />
+          )
+        }
+      />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   );
 }

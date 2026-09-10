@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { api } from "../api.js";
 import { formatDateTime, weekdayName } from "@shared/time.js";
+import Shell from "../Shell.jsx";
 
 const HOURS = Array.from({ length: 14 }, (_, i) => i + 7);
 const DAYS = [0, 1, 2, 3, 4, 5, 6];
 
-export default function Provider({ lang, tr }) {
-  const [tab, setTab] = useState("availability");
+export default function Provider({ lang, tr, user, action, onLogout }) {
+  const [tab, setTab] = useState("today");
   const [slots, setSlots] = useState([]);
   const [bookings, setBookings] = useState([]);
   const [clients, setClients] = useState([]);
@@ -67,112 +68,119 @@ export default function Provider({ lang, tr }) {
   }
 
   const upcoming = bookings.filter((b) => b.status === "confirmed" && new Date(b.start) > new Date());
-  const past = bookings.filter((b) => !(b.status === "confirmed" && new Date(b.start) > new Date()));
+
+  const tabs = [
+    { id: "today", icon: "today", label: tr("today") },
+    { id: "availability", icon: "hours", label: tr("availability") },
+    { id: "clients", icon: "clients", label: tr("clients") },
+    { id: "me", icon: "me", label: tr("me") },
+  ];
+  const titles = {
+    today: tr("today"),
+    availability: tr("week"),
+    clients: tr("clients"),
+    me: tr("me"),
+  };
 
   return (
-    <div>
-      {reminders.banners.map((r) => (
-        <div className="warn" key={r.id} style={{ marginBottom: 12 }}>
-          {tr("reminderSoon")}: {lang === "he" ? r.booking.client?.name : r.booking.client?.nameEn} ·{" "}
-          {formatDateTime(r.booking.start, lang)}
-        </div>
-      ))}
+    <Shell title={titles[tab]} action={action} tabs={tabs} tab={tab} onTab={setTab}>
       {error ? <p className="error">{error}</p> : null}
-      {loading ? <p className="loading">{lang === "he" ? "טוען…" : "Loading…"}</p> : null}
+      {loading ? <p className="loading">…</p> : null}
 
-      <div className="tabs">
-        <button type="button" className={tab === "availability" ? "on" : ""} onClick={() => setTab("availability")}>
-          {tr("availability")}
-        </button>
-        <button type="button" className={tab === "bookings" ? "on" : ""} onClick={() => setTab("bookings")}>
-          {tr("bookings")}
-        </button>
-        <button type="button" className={tab === "clients" ? "on" : ""} onClick={() => setTab("clients")}>
-          {tr("clients")}
-        </button>
-      </div>
+      {tab === "today" ? (
+        <div className="pane">
+          {reminders.banners[0] ? (
+            <div className="warn" style={{ marginBottom: 12 }}>
+              {tr("reminderSoon")} · {lang === "he" ? reminders.banners[0].booking.client?.name : reminders.banners[0].booking.client?.nameEn}
+            </div>
+          ) : null}
+          {upcoming.length === 0 ? <p className="meta">{tr("emptyBookings")}</p> : null}
+          <div className="list">
+            {upcoming.map((b) => (
+              <div className="item" key={b.id}>
+                <div>
+                  <h4>{lang === "he" ? b.client?.name : b.client?.nameEn || b.client?.name}</h4>
+                  <div className="meta">{formatDateTime(b.start, lang)}</div>
+                </div>
+                <button className="btn tiny" type="button" onClick={() => cancel(b.id)}>
+                  {tr("cancel")}
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       {tab === "availability" ? (
-        <section className="card stack">
-          <div>
-            <h2 style={{ margin: "0 0 6px" }}>{tr("week")}</h2>
-            <p className="meta">{tr("clickToggle")}</p>
-          </div>
+        <div className="pane stack">
+          <p className="meta">{tr("clickToggle")}</p>
           <div className="grid-week">
             <div />
             {DAYS.map((d) => (
               <div className="hd" key={d}>
-                {weekdayName(d, lang)}
+                {weekdayName(d, lang).slice(0, lang === "he" ? 1 : 2)}
               </div>
             ))}
             {HOURS.map((hour) => (
-              <HourRow
-                key={hour}
-                hour={hour}
-                availSet={availSet}
-                busyHours={busyHours}
-                onToggle={toggle}
-              />
+              <HourRow key={hour} hour={hour} availSet={availSet} busyHours={busyHours} onToggle={toggle} />
             ))}
           </div>
           <div className="legend">
-            <span><i className="open" />{lang === "he" ? "פתוח" : "Open"}</span>
-            <span><i className="closed" />{lang === "he" ? "סגור" : "Closed"}</span>
-            <span><i className="taken" />{lang === "he" ? "יש תור השבוע" : "Booked this week"}</span>
+            <span><i className="open" />{tr("open")}</span>
+            <span><i className="closed" />{tr("closed")}</span>
+            <span><i className="taken" />{tr("takenSlot")}</span>
           </div>
-          <p className="note">{tr("calNote")}</p>
-          <div>
-            <h3 style={{ marginBottom: 8 }}>{tr("reminderLog")}</h3>
-            {reminders.log.length === 0 ? <p className="meta">{tr("noReminders")}</p> : null}
-            {reminders.log.map((row) => (
-              <div className="item" key={row.id}>
-                <div>
-                  <div>{lang === "he" ? "תזכורת מתוזמנת לאימון" : "Scheduled session reminder"}</div>
-                  <div className="meta">{row.channel} · {formatDateTime(row.at, lang)}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-      ) : null}
-
-      {tab === "bookings" ? (
-        <section className="card">
-          <h2>{tr("upcoming")}</h2>
-          <BookingList rows={upcoming} lang={lang} tr={tr} onCancel={cancel} empty={tr("emptyBookings")} />
-          <h2>{tr("past")}</h2>
-          <BookingList rows={past} lang={lang} tr={tr} empty="" />
-        </section>
+        </div>
       ) : null}
 
       {tab === "clients" ? (
-        <section className="card">
+        <div className="pane">
           {clients.length === 0 ? <p className="meta">{tr("emptyClients")}</p> : null}
           <div className="list">
             {clients.map((row) => (
               <div className="item" key={row.client.id}>
                 <div>
                   <h3>{lang === "he" ? row.client.name : row.client.nameEn || row.client.name}</h3>
-                  <div className="meta">{row.client.email}</div>
                   <div className="meta">
-                    {tr("nextVisit")}: {row.upcoming ? formatDateTime(row.upcoming.start, lang) : "—"} · {tr("lastVisit")}:{" "}
-                    {row.last ? formatDateTime(row.last.start, lang) : "—"}
+                    {row.upcoming ? formatDateTime(row.upcoming.start, lang) : "—"}
                   </div>
                 </div>
-                <span className="badge">
-                  {row.total} {tr("sessions")}
-                </span>
+                <span className="badge">{row.total}</span>
               </div>
             ))}
           </div>
-        </section>
+        </div>
       ) : null}
-    </div>
+
+      {tab === "me" ? (
+        <div className="pane">
+          <p className="profile-name">{lang === "he" ? user.name : user.nameEn || user.name}</p>
+          <p className="meta">{user.email}</p>
+          <p className="meta" style={{ marginTop: 8 }}>{tr("calNote")}</p>
+          <div className="section-label">{tr("reminderLog")}</div>
+          {reminders.log.length === 0 ? <p className="meta">{tr("noReminders")}</p> : null}
+          <div className="list">
+            {reminders.log.map((row) => (
+              <div className="item" key={row.id}>
+                <div>
+                  <h4>{tr("reminder")}</h4>
+                  <div className="meta">{formatDateTime(row.at, lang)}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="hairline" />
+          <button className="ghost" type="button" onClick={onLogout}>
+            {tr("logout")}
+          </button>
+        </div>
+      ) : null}
+    </Shell>
   );
 }
 
 function HourRow({ hour, availSet, busyHours, onToggle }) {
-  const label = `${String(hour).padStart(2, "0")}:00`;
+  const label = `${String(hour).padStart(2, "0")}`;
   return (
     <>
       <div className="hr">{label}</div>
@@ -191,31 +199,5 @@ function HourRow({ hour, availSet, busyHours, onToggle }) {
         );
       })}
     </>
-  );
-}
-
-function BookingList({ rows, lang, tr, onCancel, empty }) {
-  if (!rows.length) return empty ? <p className="meta">{empty}</p> : null;
-  return (
-    <div className="list">
-      {rows.map((b) => (
-        <div className="item" key={b.id}>
-          <div>
-            <h4>{lang === "he" ? b.client?.name : b.client?.nameEn || b.client?.name}</h4>
-            <div className="meta">{formatDateTime(b.start, lang)}</div>
-          </div>
-          <div className="row">
-            <span className={`badge ${b.status === "cancelled" ? "gone" : ""}`}>
-              {b.status === "cancelled" ? tr("cancelled") : tr("confirmed")}
-            </span>
-            {onCancel && b.status === "confirmed" && new Date(b.start) > new Date() ? (
-              <button className="btn tiny danger" type="button" onClick={() => onCancel(b.id)}>
-                {tr("cancel")}
-              </button>
-            ) : null}
-          </div>
-        </div>
-      ))}
-    </div>
   );
 }
