@@ -12,6 +12,7 @@ export default function Provider({ lang, tr }) {
   const [clients, setClients] = useState([]);
   const [reminders, setReminders] = useState({ banners: [], log: [] });
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
 
   const availSet = useMemo(() => new Set(slots.map((s) => `${s.weekday}-${s.hour}`)), [slots]);
   const busyHours = useMemo(() => {
@@ -41,6 +42,8 @@ export default function Provider({ lang, tr }) {
       setReminders(r);
     } catch {
       setError(tr("error"));
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -75,6 +78,7 @@ export default function Provider({ lang, tr }) {
         </div>
       ))}
       {error ? <p className="error">{error}</p> : null}
+      {loading ? <p className="loading">{lang === "he" ? "טוען…" : "Loading…"}</p> : null}
 
       <div className="tabs">
         <button type="button" className={tab === "availability" ? "on" : ""} onClick={() => setTab("availability")}>
@@ -111,6 +115,11 @@ export default function Provider({ lang, tr }) {
               />
             ))}
           </div>
+          <div className="legend">
+            <span><i className="open" />{lang === "he" ? "פתוח" : "Open"}</span>
+            <span><i className="closed" />{lang === "he" ? "סגור" : "Closed"}</span>
+            <span><i className="taken" />{lang === "he" ? "יש תור השבוע" : "Booked this week"}</span>
+          </div>
           <p className="note">{tr("calNote")}</p>
           <div>
             <h3 style={{ marginBottom: 8 }}>{tr("reminderLog")}</h3>
@@ -118,8 +127,8 @@ export default function Provider({ lang, tr }) {
             {reminders.log.map((row) => (
               <div className="item" key={row.id}>
                 <div>
-                  <div>{row.message}</div>
-                  <div className="meta">{row.channel} · {row.at}</div>
+                  <div>{lang === "he" ? "תזכורת מתוזמנת לאימון" : "Scheduled session reminder"}</div>
+                  <div className="meta">{row.channel} · {formatDateTime(row.at, lang)}</div>
                 </div>
               </div>
             ))}

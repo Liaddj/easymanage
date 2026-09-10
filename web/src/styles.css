@@ -180,9 +180,22 @@ input:focus { outline: 2px solid #1f4d3a55; border-color: var(--forest); }
   border-radius: 8px;
   background: #efe7d8;
 }
-.cell.on { background: #cfe3d4; }
-.cell.busy { background: var(--clay-soft); }
+.cell.on { background: #2d6b50; }
+.cell.busy { background: #c85a2e; }
 .cell:disabled { opacity: 0.35; }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 13px; color: var(--muted); }
+.legend i {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 4px;
+  margin-inline-end: 6px;
+  vertical-align: -1px;
+}
+.legend .open { background: #2d6b50; }
+.legend .closed { background: #efe7d8; }
+.legend .taken { background: #c85a2e; }
+.loading { color: var(--muted); padding: 18px 0; }
 
 .list { display: grid; gap: 10px; }
 .item {

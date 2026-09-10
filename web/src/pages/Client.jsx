@@ -12,6 +12,7 @@ export default function Client({ lang, tr }) {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   async function load() {
     const [s, b, r] = await Promise.all([api.slots(), api.bookings(), api.reminders()]);
@@ -19,6 +20,7 @@ export default function Client({ lang, tr }) {
     setBookings(b.bookings);
     setReminders(r.banners);
     if (!day && s.slots[0]) setDay(s.slots[0].dateKey);
+    setLoading(false);
   }
 
   useEffect(() => {
@@ -93,6 +95,8 @@ export default function Client({ lang, tr }) {
           {tr("myBookings")}
         </button>
       </div>
+
+      {loading ? <p className="loading">{lang === "he" ? "טוען…" : "Loading…"}</p> : null}
 
       {tab === "book" ? (
         <section className="card stack">
