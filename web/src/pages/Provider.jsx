@@ -3,6 +3,7 @@ import { api } from "../api.js";
 import { formatDateTime, weekdayName } from "@shared/time.js";
 import { toast } from "../Toast.jsx";
 import Shell from "../Shell.jsx";
+import Sheet, { ConfirmSheet, Segment, Skeleton } from "../Sheet.jsx";
 
 const HOURS = Array.from({ length: 14 }, (_, i) => i + 7);
 const DAYS = [0, 1, 2, 3, 4, 5, 6];
@@ -14,8 +15,12 @@ export default function Provider({ lang, tr, user, action, onLogout }) {
   const [clients, setClients] = useState([]);
   const [invite, setInvite] = useState(null);
   const [reminders, setReminders] = useState({ banners: [], log: [] });
-  const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  const [sheet, setSheet] = useState(null);
+  const [list, setList] = useState("upcoming");
+  const [busy, setBusy] = useState(false);
+  const [addForm, setAddForm] = useState({ name: "", email: "", phone: "", notes: "" });
+  const [noteDraft, setNoteDraft] = useState("");
 
   const availSet = useMemo(() => new Set(slots.map((s) => `${s.weekday}-${s.hour}`)), [slots]);
   const busyHours = useMemo(() => {
@@ -51,7 +56,7 @@ export default function Provider({ lang, tr, user, action, onLogout }) {
       setReminders(r);
       setInvite(inv);
     } catch {
-      setError(tr("error"));
+      toast(tr("error"), "err");
     } finally {
       setLoading(false);
     }
@@ -69,24 +74,70 @@ export default function Provider({ lang, tr, user, action, onLogout }) {
     try {
       const next = await api.toggleAvailability(weekday, hour);
       setSlots(next.slots);
-      load();
     } catch {
+      toast(tr("error"), "err");
       load();
     }
   }
 
   async function cancel(id) {
-    setBookings((cur) => cur.filter((b) => b.id !== id));
-    toast(tr("removed"), "gone");
+    setBusy(true);
     try {
       await api.cancel(id);
+      setBookings((cur) => cur.map((b) => (b.id === id ? { ...b, status: "cancelled" } : b)));
+      setSheet(null);
+      toast(tr("removed"), "gone");
       load();
     } catch {
+      toast(tr("error"), "err");
       load();
+    } finally {
+      setBusy(false);
     }
   }
 
-  const upcoming = bookings.filter((b) => b.status === "confirmed" && new Date(b.start) > new Date());
+  async function saveClient() {
+    if (!sheet?.row) return;
+    setBusy(true);
+    try {
+      const { client } = await api.updateClient(sheet.row.client.id, {
+        notes: noteDraft,
+        phone: sheet.row.client.phone,
+      });
+      setClients((cur) => cur.map((row) => (row.client.id === client.id ? { ...row, client } : row)));
+      setSheet(null);
+      toast(tr("saved"));
+    } catch {
+      toast(tr("error"), "err");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function createClient(e) {
+    e.preventDefault();
+    setBusy(true);
+    try {
+      await api.addClient(addForm);
+      setAddForm({ name: "", email: "", phone: "", notes: "" });
+      setSheet(null);
+      toast(tr("success"));
+      load();
+    } catch {
+      toast(tr("error"), "err");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const confirmed = bookings.filter((b) => b.status === "confirmed");
+  const upcoming = confirmed
+    .filter((b) => new Date(b.start) > new Date())
+    .sort((a, b) => new Date(a.start) - new Date(b.start));
+  const past = confirmed
+    .filter((b) => new Date(b.start) <= new Date())
+    .sort((a, b) => new Date(b.start) - new Date(a.start));
+  const rows = list === "upcoming" ? upcoming : past;
 
   const tabs = [
     { id: "today", icon: "today", label: tr("today") },
@@ -106,24 +157,109 @@ export default function Provider({ lang, tr, user, action, onLogout }) {
     return `${base}#/join/${invite?.code || "FLOWNOA"}`;
   }
 
-  return (
-    <Shell title={titles[tab]} action={action} tabs={tabs} tab={tab} onTab={setTab}>
-      {error ? <p className="error">{error}</p> : null}
-      {loading ? <p className="loading">…</p> : null}
+  function shareWhatsApp() {
+    const coach = lang === "he" ? user.name : user.nameEn || user.name;
+    const text = `${tr("inviteShare")} ${coach}: ${inviteUrl()}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank", "noopener,noreferrer");
+  }
 
-      {tab === "today" ? (
+  const who = (b) => (lang === "he" ? b.client?.name : b.client?.nameEn || b.client?.name);
+
+  return (
+    <Shell
+      title={titles[tab]}
+      action={action}
+      tabs={tabs}
+      tab={tab}
+      onTab={setTab}
+      overlay={
+        <>
+          {sheet?.kind === "cancel" ? (
+            <ConfirmSheet
+              title={tr("cancelAsk")}
+              body={tr("cancelBody")}
+              confirm={tr("cancelYes")}
+              cancel={tr("cancelNo")}
+              danger
+              busy={busy}
+              onConfirm={() => cancel(sheet.booking.id)}
+              onClose={() => setSheet(null)}
+            />
+          ) : null}
+
+          {sheet?.kind === "add" ? (
+            <Sheet title={tr("addClient")} onClose={() => setSheet(null)}>
+              <p className="lede">{tr("addClientHint")}</p>
+              <form className="stack" onSubmit={createClient}>
+                <label>
+                  {tr("name")}
+                  <input value={addForm.name} onChange={(e) => setAddForm({ ...addForm, name: e.target.value })} required />
+                </label>
+                <label>
+                  {tr("email")}
+                  <input type="email" value={addForm.email} onChange={(e) => setAddForm({ ...addForm, email: e.target.value })} />
+                </label>
+                <label>
+                  {tr("phone")}
+                  <input value={addForm.phone} onChange={(e) => setAddForm({ ...addForm, phone: e.target.value })} inputMode="tel" />
+                </label>
+                <label>
+                  {tr("notes")}
+                  <input value={addForm.notes} onChange={(e) => setAddForm({ ...addForm, notes: e.target.value })} />
+                </label>
+                <button className="btn full" disabled={busy} type="submit">
+                  {tr("save")}
+                </button>
+              </form>
+            </Sheet>
+          ) : null}
+
+          {sheet?.kind === "client" ? (
+            <Sheet title={lang === "he" ? sheet.row.client.name : sheet.row.client.nameEn || sheet.row.client.name} onClose={() => setSheet(null)}>
+              <p className="meta">{sheet.row.client.email}</p>
+              <p className="meta">{sheet.row.client.phone || tr("noPhone")}</p>
+              <p className="meta">
+                {sheet.row.upcoming
+                  ? `${tr("nextVisit")} · ${formatDateTime(sheet.row.upcoming.start, lang)}`
+                  : sheet.row.last
+                    ? `${tr("lastVisit")} · ${formatDateTime(sheet.row.last.start, lang)}`
+                    : tr("emptyBookings")}
+              </p>
+              <label style={{ marginTop: 10 }}>
+                {tr("coachNotes")}
+                <input value={noteDraft} onChange={(e) => setNoteDraft(e.target.value)} />
+              </label>
+              <button className="btn full" type="button" disabled={busy} onClick={saveClient} style={{ marginTop: 10 }}>
+                {tr("save")}
+              </button>
+            </Sheet>
+          ) : null}
+        </>
+      }
+    >
+      {loading ? <Skeleton rows={4} /> : null}
+
+      {!loading && tab === "today" ? (
         <div className="pane">
           {reminders.banners[0] ? (
-            <div className="warn" style={{ marginBottom: 12 }}>
-              {tr("reminderSoon")} · {lang === "he" ? reminders.banners[0].booking.client?.name : reminders.banners[0].booking.client?.nameEn}
+            <div className="warn" style={{ marginBottom: 10 }}>
+              {tr("reminderSoon")} · {who(reminders.banners[0].booking)}
             </div>
           ) : null}
-          {upcoming.length === 0 ? <div className="empty">{tr("emptyBookings")}</div> : null}
+          <Segment
+            value={list}
+            onChange={setList}
+            options={[
+              { id: "upcoming", label: tr("upcoming") },
+              { id: "past", label: tr("past") },
+            ]}
+          />
+          {rows.length === 0 ? <div className="empty">{list === "upcoming" ? tr("emptyBookings") : tr("emptyPast")}</div> : null}
           <div className="list">
-            {upcoming.map((b) => (
+            {rows.map((b) => (
               <div className="item" key={b.id}>
                 <div>
-                  <h4>{lang === "he" ? b.client?.name : b.client?.nameEn || b.client?.name}</h4>
+                  <h4>{who(b)}</h4>
                   <div className="meta">
                     {formatDateTime(b.start, lang)} ·{" "}
                     <span className={`pay ${b.paymentStatus === "paid" ? "" : "unpaid"}`}>
@@ -131,16 +267,18 @@ export default function Provider({ lang, tr, user, action, onLogout }) {
                     </span>
                   </div>
                 </div>
-                <button className="btn tiny" type="button" onClick={() => cancel(b.id)}>
-                  {tr("cancel")}
-                </button>
+                {list === "upcoming" ? (
+                  <button className="btn tiny" type="button" onClick={() => setSheet({ kind: "cancel", booking: b })}>
+                    {tr("cancel")}
+                  </button>
+                ) : null}
               </div>
             ))}
           </div>
         </div>
       ) : null}
 
-      {tab === "availability" ? (
+      {!loading && tab === "availability" ? (
         <div className="pane stack">
           <p className="meta">{tr("clickToggle")}</p>
           <div className="grid-week">
@@ -162,49 +300,72 @@ export default function Provider({ lang, tr, user, action, onLogout }) {
         </div>
       ) : null}
 
-      {tab === "clients" ? (
+      {!loading && tab === "clients" ? (
         <div className="pane">
           <div className="card stack">
             <div className="section-label" style={{ marginTop: 0 }}>{tr("invite")}</div>
             <p className="meta">{tr("inviteHint")}</p>
             <div className="code">{invite?.code || "—"}</div>
-            <button
-              className="btn secondary full"
-              type="button"
-              onClick={async () => {
-                try {
-                  await navigator.clipboard.writeText(inviteUrl());
-                  toast(tr("copied"));
-                } catch {
-                  toast(inviteUrl());
-                }
-              }}
-            >
-              {tr("copyLink")}
-            </button>
+            <div className="row">
+              <button
+                className="btn secondary"
+                type="button"
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(inviteUrl());
+                    toast(tr("copied"));
+                  } catch {
+                    toast(inviteUrl());
+                  }
+                }}
+              >
+                {tr("copyLink")}
+              </button>
+              <button className="btn secondary" type="button" onClick={shareWhatsApp}>
+                {tr("shareWa")}
+              </button>
+            </div>
           </div>
-          {clients.length === 0 ? <div className="empty" style={{ marginTop: 14 }}>{tr("emptyInvite")}</div> : null}
+          <div className="section-label">
+            {tr("clients")} · {clients.length}
+          </div>
+          <button className="btn secondary full" type="button" onClick={() => setSheet({ kind: "add" })}>
+            {tr("addClient")}
+          </button>
+          {clients.length === 0 ? <div className="empty" style={{ marginTop: 12 }}>{tr("emptyInvite")}</div> : null}
           <div className="list">
             {clients.map((row) => (
-              <div className="item" key={row.client.id}>
+              <button
+                className="item as-btn"
+                type="button"
+                key={row.client.id}
+                onClick={() => {
+                  setNoteDraft(row.client.notes || "");
+                  setSheet({ kind: "client", row });
+                }}
+              >
                 <div>
                   <h3>{lang === "he" ? row.client.name : row.client.nameEn || row.client.name}</h3>
                   <div className="meta">
-                    {row.upcoming ? formatDateTime(row.upcoming.start, lang) : "—"}
-                    {row.upcoming ? ` · ${row.upcoming.paymentStatus === "paid" ? tr("paid") : tr("unpaid")}` : ""}
+                    {row.client.phone || tr("noPhone")}
+                    {row.client.city ? ` · ${lang === "he" ? row.client.city : row.client.cityEn || row.client.city}` : ""}
+                    {row.upcoming ? ` · ${formatDateTime(row.upcoming.start, lang)}` : ""}
                   </div>
                 </div>
                 <span className="badge">{row.total}</span>
-              </div>
+              </button>
             ))}
           </div>
         </div>
       ) : null}
 
-      {tab === "me" ? (
+      {!loading && tab === "me" ? (
         <div className="pane">
           <p className="profile-name">{lang === "he" ? user.name : user.nameEn || user.name}</p>
           <p className="meta">{user.email}</p>
+          <p className="meta">
+            {lang === "he" ? user.specialty : user.specialtyEn} · {lang === "he" ? user.city : user.cityEn}
+          </p>
           <p className="meta" style={{ marginTop: 8 }}>{tr("calLater")}</p>
           <div className="section-label">{tr("reminderLog")}</div>
           {reminders.log.length === 0 ? <p className="meta">{tr("noReminders")}</p> : null}
@@ -224,6 +385,7 @@ export default function Provider({ lang, tr, user, action, onLogout }) {
           </button>
         </div>
       ) : null}
+
     </Shell>
   );
 }

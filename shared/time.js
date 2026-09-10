@@ -115,3 +115,57 @@ export function hoursUntil(iso) {
 export function isPast(iso) {
   return new Date(iso).getTime() < Date.now();
 }
+
+export function todayKey(timeZone = TZ) {
+  return dateKey(new Date(), timeZone);
+}
+
+export function daysInMonth(year, month) {
+  return new Date(Date.UTC(year, month, 0)).getUTCDate();
+}
+
+export function monthGrid(year, month) {
+  const dim = daysInMonth(year, month);
+  const firstWeekday = zonedParts(wallTimeToDate(year, month, 1, 12, 0)).weekday;
+  const cells = [];
+  for (let i = 0; i < firstWeekday; i += 1) cells.push(null);
+  for (let day = 1; day <= dim; day += 1) {
+    cells.push({ key: `${year}-${pad(month)}-${pad(day)}`, day });
+  }
+  while (cells.length % 7 !== 0) cells.push(null);
+  return cells;
+}
+
+export function shiftMonth(year, month, delta) {
+  const idx = year * 12 + (month - 1) + delta;
+  return { year: Math.floor(idx / 12), month: (idx % 12) + 1 };
+}
+
+export function formatDateLong(key, lang = "he") {
+  const [y, m, d] = String(key).split("-").map(Number);
+  const date = wallTimeToDate(y, m, d, 12, 0);
+  const locale = lang === "he" ? "he-IL" : "en-GB";
+  return new Intl.DateTimeFormat(locale, {
+    timeZone: TZ,
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  }).format(date);
+}
+
+export function monthTitle(year, month, lang = "he") {
+  const date = wallTimeToDate(year, month, 1, 12, 0);
+  const locale = lang === "he" ? "he-IL" : "en-GB";
+  return new Intl.DateTimeFormat(locale, {
+    timeZone: TZ,
+    month: "long",
+    year: "numeric",
+  }).format(date);
+}
+
+export function parseDateKey(key) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(key || ""))) return null;
+  const [year, month, day] = key.split("-").map(Number);
+  if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+  return { year, month, day };
+}

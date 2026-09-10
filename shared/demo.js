@@ -11,6 +11,8 @@ export const DEMO_USERS = [
     cityEn: "Tel Aviv",
     specialty: "טניס · כושר",
     specialtyEn: "Tennis · Fitness",
+    phone: "050-0000001",
+    notes: "",
   },
   {
     id: "u_client",
@@ -20,6 +22,8 @@ export const DEMO_USERS = [
     nameEn: "Dani Levi",
     city: "תל אביב",
     cityEn: "Tel Aviv",
+    phone: "052-0000002",
+    notes: "מעדיף ערב. טניס.",
   },
   {
     id: "u_michal",
@@ -29,6 +33,8 @@ export const DEMO_USERS = [
     nameEn: "Michal Avraham",
     city: "רמת גן",
     cityEn: "Ramat Gan",
+    phone: "054-0000003",
+    notes: "כושר כללי.",
   },
   {
     id: "u_yossi",
@@ -38,6 +44,8 @@ export const DEMO_USERS = [
     nameEn: "Yossi Peretz",
     city: "חולון",
     cityEn: "Holon",
+    phone: "053-0000004",
+    notes: "",
   },
 ];
 
