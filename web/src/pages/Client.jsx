@@ -135,7 +135,7 @@ export default function Client({ lang, tr, user, action, onLogout }) {
           {!next ? <div className="empty">{tr("emptyHome")}</div> : null}
           {upcoming.length > 1 ? (
             <div className="list">
-              {upcoming.slice(1).map((b) => (
+              {upcoming.slice(1, 4).map((b) => (
                 <div className="item" key={b.id}>
                   <div>
                     <h4>{formatDateTime(b.start, lang)}</h4>
