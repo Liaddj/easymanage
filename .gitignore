@@ -1,0 +1,49 @@
+# Dependencies
+node_modules/
+
+# Build / tooling
+dist/
+build/
+coverage/
+*.tsbuildinfo
+.turbo/
+
+# Secrets — never commit real env files
+.env
+.env.*
+!.env.example
+
+# Expo / React Native
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+.metro-health-check*
+.kotlin/
+apps/mobile/ios
+apps/mobile/android
+
+# Native signing / credentials
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.pem
+id_rsa
+id_rsa.pub
+credentials.json
+service-account*.json
+
+# Logs and OS
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+*.log
+.DS_Store
+Thumbs.db
+
+# Editors
+.idea/
+.vscode/
+!.vscode/extensions.json
