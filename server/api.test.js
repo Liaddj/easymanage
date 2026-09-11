@@ -199,6 +199,15 @@ try {
     assert(!forbidden.test(text), `ship-stop card/invoice field in ${file}`);
   }
 
+  const css = readFileSync(join(root, "web", "src", "styles.css"), "utf8");
+  assert(css.includes("height: 100dvh"), "dvh fallback");
+  assert(css.includes("height: 100svh"), "svh lock");
+  assert(css.includes("overscroll-behavior: none"), "no document overscroll");
+  assert(css.includes("var(--vvh"), "visual viewport height var");
+  const vp = readFileSync(join(root, "web", "src", "viewport.js"), "utf8");
+  assert(vp.includes("visualViewport"), "visualViewport listener");
+  assert(vp.includes("--vvh"), "sets --vvh");
+
   console.log("api tests passed");
   child.kill("SIGTERM");
   process.exit(0);

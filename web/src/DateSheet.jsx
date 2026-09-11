@@ -66,9 +66,7 @@ export default function DateSheet({ lang, tr, selected, availableKeys, onPick, o
           );
         })}
       </div>
-      <p className="meta" style={{ marginTop: 10 }}>
-        {tr("hasOpen")}
-      </p>
+      <p className="cal-hint">{tr("hasOpen")}</p>
     </Sheet>
   );
 }
