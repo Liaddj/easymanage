@@ -64,7 +64,7 @@ export default function Login({ lang, tr, onAuthed, action }) {
           </button>
         </div>
 
-        <button className="ghost" type="button" style={{ marginTop: 10 }} onClick={() => setMore(!more)}>
+        <button className="ghost" type="button" style={{ marginTop: 6 }} onClick={() => setMore(!more)}>
           {tr("moreEmail")}
         </button>
 
