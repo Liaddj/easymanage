@@ -75,6 +75,9 @@ export default function ChessGameBoard({ gameState }) {
     gameOver,
     pendingPromotion,
     arrowMode,
+    thinking,
+    canDragPiece,
+    isPlayerTurn,
   } = gameState;
 
   const squareStyles = useMemo(
@@ -98,7 +101,7 @@ export default function ChessGameBoard({ gameState }) {
       boardOrientation: orientation,
       animationDurationInMs: 280,
       showAnimations: true,
-      allowDragging: !gameOver && !pendingPromotion && !arrowMode,
+      allowDragging: !gameOver && !pendingPromotion && !arrowMode && !thinking && isPlayerTurn,
       allowDrawingArrows: !arrowMode,
       clearArrowsOnClick: true,
       clearArrowsOnPositionChange: true,
@@ -119,25 +122,24 @@ export default function ChessGameBoard({ gameState }) {
       darkSquareNotationStyle: { color: "rgba(34,211,238,0.5)", fontWeight: 600 },
       lightSquareNotationStyle: { color: "rgba(192,132,252,0.45)", fontWeight: 600 },
       onPieceDrop: ({ sourceSquare, targetSquare }) => {
-        if (!targetSquare) return false;
+        if (!targetSquare || thinking || !isPlayerTurn) return false;
         return tryMove(sourceSquare, targetSquare);
       },
       onSquareClick: ({ square }) => handleSquareClick(square),
-      canDragPiece: ({ piece }) => {
-        if (!piece?.pieceType) return false;
-        return piece.pieceType[0] === game.turn();
-      },
+      canDragPiece,
     }),
     [
       arrowMode,
       arrows,
+      canDragPiece,
       fen,
-      game,
       gameOver,
       handleSquareClick,
+      isPlayerTurn,
       orientation,
       pendingPromotion,
       squareStyles,
+      thinking,
       tryMove,
     ],
   );

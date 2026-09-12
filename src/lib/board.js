@@ -108,22 +108,28 @@ export function isHanging(chess, square) {
   return chess.isAttacked(square, them) && !chess.isAttacked(square, piece.color);
 }
 
-/** Missing pieces relative to the starting army (used for the captured strip). */
-export function capturedPieces(chess) {
-  const start = {
-    w: { p: 8, n: 2, b: 2, r: 2, q: 1 },
-    b: { p: 8, n: 2, b: 2, r: 2, q: 1 },
-  };
+function countArmy(chess) {
   const now = {
     w: { p: 0, n: 0, b: 0, r: 0, q: 0 },
     b: { p: 0, n: 0, b: 0, r: 0, q: 0 },
   };
-
   for (const row of chess.board()) {
     for (const piece of row) {
       if (piece && piece.type !== "k") now[piece.color][piece.type] += 1;
     }
   }
+  return now;
+}
+
+/** Missing pieces relative to the game's starting army (standard or puzzle FEN). */
+export function capturedPieces(chess, startFen = START_FEN) {
+  let start;
+  try {
+    start = countArmy(new Chess(startFen));
+  } catch {
+    start = { w: { p: 8, n: 2, b: 2, r: 2, q: 1 }, b: { p: 8, n: 2, b: 2, r: 2, q: 1 } };
+  }
+  const now = countArmy(chess);
 
   const taken = { w: [], b: [] };
   for (const type of ["q", "r", "b", "n", "p"]) {
@@ -147,8 +153,20 @@ export function materialDiff(chess) {
   return score;
 }
 
-export function pairMoves(history) {
+export function pairMoves(history, startTurn = "w") {
   const pairs = [];
+  if (startTurn === "b") {
+    if (!history.length) return pairs;
+    pairs.push({ n: 1, white: "…", black: history[0] ?? "" });
+    for (let i = 1; i < history.length; i += 2) {
+      pairs.push({
+        n: Math.floor(i / 2) + 2,
+        white: history[i] ?? "",
+        black: history[i + 1] ?? "",
+      });
+    }
+    return pairs;
+  }
   for (let i = 0; i < history.length; i += 2) {
     pairs.push({
       n: i / 2 + 1,
@@ -157,4 +175,13 @@ export function pairMoves(history) {
     });
   }
   return pairs;
+}
+
+export function statusFromGame(chess, localResult = null) {
+  if (localResult) return localResult;
+  if (chess.isCheckmate()) return chess.turn() === "w" ? "blackWins" : "whiteWins";
+  if (chess.isStalemate()) return "stalemate";
+  if (chess.isDraw()) return "draw";
+  if (chess.isCheck()) return "check";
+  return chess.turn() === "w" ? "whiteToMove" : "blackToMove";
 }

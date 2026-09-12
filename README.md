@@ -1,16 +1,17 @@
 # Maestro — Educational Chess
 
-Frontend-only chess coach. Play both sides on one board, see legal moves and threats, and get a short lesson after every move. No server, no accounts, no payments.
+Frontend-only chess coach. Learn tactics through staged puzzles, then play a full game against a computer opponent. Every move is gated by `chess.js` — illegal moves never appear on the board.
 
 ## Stack
 
-- React 18 + Vite
+- React 19 + Vite
 - Tailwind CSS
 - Framer Motion
 - `chess.js` for rules and game state
 - `react-chessboard` for the animated board
+- In-browser minimax + heuristic eval (easy / medium / hard)
 
-Everything runs in the browser. Evaluation is a material + center + development heuristic — not a chess engine.
+No server, no accounts, no payments. Progress lives in `localStorage`.
 
 ## Run locally
 
@@ -22,18 +23,21 @@ npm run dev
 Open `http://127.0.0.1:5173`.
 
 ```bash
+npm test
 npm run build
 npm run preview
 ```
 
 ## How to use
 
-- **Click** a piece to glow every legal square, then click (or drag) to move.
-- **Coach Mode** pulses red on pieces that are under attack and writes a short explanation after each move. The evaluation bar is a simulated White/Black advantage meter.
-- **Arrows:** right-drag on desktop. On a phone, tap **Arrows**, then two squares. The coach also draws plan / check arrows.
-- **Hint** draws a suggested move; **Play hint** makes it.
-- **Undo / Redo / Reset / Flip** are in the control dock.
-- Language toggle **עב / EN** (Hebrew is the default; the board stays LTR).
+- **Stages** — forks, pins, skewers, discovered attacks, middlegame motifs, then endgame basics. Each card has a goal, a FEN, success/fail feedback, and a hint.
+- **vs Computer** — you play White by default (or Black / flip). The engine thinks briefly, then animates a legal reply. Undo rewinds a pair of moves.
+- **Free play** — both sides on one board, still strict turns.
+- **Click** a piece of the side to move to glow every legal square, then click or drag.
+- **Coach Mode** pulses red on pieces that are under attack and explains ideas after each move (free play and vs computer).
+- **Arrows:** right-drag on desktop. On a phone, tap **Arrows**, then two squares.
+- **Hint** draws a suggested move; **Play hint** makes it. **H** on the keyboard also requests a hint. **Esc** clears a selection.
+- Language toggle **HE / EN** (English is the default; Hebrew is optional. The board stays LTR). Sound is optional.
 
 ## Notes
 
