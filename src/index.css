@@ -1,0 +1,135 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Heebo", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Orbitron", "Heebo", sans-serif;
+  --color-void: #05060a;
+  --color-ink: #0a0c14;
+  --color-panel: #10131e;
+  --color-cyan: #22d3ee;
+  --color-violet: #c084fc;
+  --color-rose: #fb7185;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
+  background: #05060a;
+  color: #e5e7eb;
+}
+
+body {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(820px 460px at 8% -8%, rgba(34, 211, 238, 0.2), transparent 55%),
+    radial-gradient(720px 420px at 96% 4%, rgba(192, 132, 252, 0.22), transparent 52%),
+    radial-gradient(520px 360px at 50% 108%, rgba(34, 211, 238, 0.1), transparent 55%),
+    linear-gradient(rgba(34, 211, 238, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(192, 132, 252, 0.04) 1px, transparent 1px);
+  background-size: auto, auto, auto, 42px 42px, 42px 42px;
+  mask-image: radial-gradient(ellipse at center, #000 42%, transparent 88%);
+  z-index: 0;
+}
+
+#root {
+  position: relative;
+  z-index: 1;
+}
+
+@keyframes threat-pulse {
+  0%,
+  100% {
+    box-shadow:
+      inset 0 0 0 2px rgba(251, 113, 133, 0.5),
+      inset 0 0 18px rgba(251, 113, 133, 0.28);
+  }
+  50% {
+    box-shadow:
+      inset 0 0 0 3px rgba(251, 113, 133, 1),
+      inset 0 0 28px rgba(251, 113, 133, 0.55);
+  }
+}
+
+.threat-pulse {
+  animation: threat-pulse 1.55s ease-in-out infinite;
+}
+
+.glass-panel {
+  background: linear-gradient(180deg, rgba(24, 30, 52, 0.88), rgba(10, 12, 22, 0.82));
+  border: 1px solid rgba(34, 211, 238, 0.22);
+  box-shadow:
+    0 0 0 1px rgba(192, 132, 252, 0.08),
+    0 12px 40px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(18px);
+}
+
+.glow-cyan:hover,
+.glow-cyan:focus-visible {
+  border-color: rgba(34, 211, 238, 0.7);
+  box-shadow: 0 0 22px rgba(34, 211, 238, 0.28);
+}
+
+.glow-violet:hover,
+.glow-violet:focus-visible {
+  border-color: rgba(192, 132, 252, 0.7);
+  box-shadow: 0 0 22px rgba(192, 132, 252, 0.28);
+}
+
+.board-ltr {
+  direction: ltr;
+}
+
+.board-frame {
+  width: min(100%, calc(100dvh - 12.8rem));
+  aspect-ratio: 1 / 1;
+  border-radius: 16px;
+  padding: 3px;
+  background: linear-gradient(135deg, rgba(34, 211, 238, 0.85), rgba(192, 132, 252, 0.75) 55%, rgba(34, 211, 238, 0.5));
+  box-shadow:
+    0 0 36px rgba(34, 211, 238, 0.18),
+    0 0 80px rgba(168, 85, 247, 0.12);
+}
+
+@media (min-width: 1024px) {
+  .board-frame {
+    width: min(100%, calc(100dvh - 7.2rem));
+  }
+}
+
+.slim-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(34, 211, 238, 0.4) transparent;
+}
+
+.slim-scroll::-webkit-scrollbar {
+  height: 6px;
+  width: 6px;
+}
+
+.slim-scroll::-webkit-scrollbar-thumb {
+  background: rgba(34, 211, 238, 0.4);
+  border-radius: 99px;
+}
+
+button,
+[role="button"] {
+  touch-action: manipulation;
+}
+
+::selection {
+  background: rgba(34, 211, 238, 0.28);
+}

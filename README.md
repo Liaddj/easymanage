@@ -1,56 +1,40 @@
-# Flow (פלואו)
+# Maestro — Educational Chess
 
-Dual-sided booking for solo fitness and tennis coaches. Hebrew-first UI, timezone `Asia/Jerusalem`.
-
-Clients pick a **date** on a phone calendar sheet, then see **free slots for that day only**, then confirm. Success and error toasts: הצלחה / שגיאה.
-
-This demo has **sandbox/mock payments only** (no PAN/CVV, no invoices, no real money). Google Calendar OAuth is off; ICS export is available.
+Frontend-only chess coach. Play both sides on one board, see legal moves and threats, and get a short lesson after every move. No server, no accounts, no payments.
 
 ## Stack
 
-React + Vite + Express (Node.js) + plain CSS. One process: Express serves the API and the Vite build.
+- React 18 + Vite
+- Tailwind CSS
+- Framer Motion
+- `chess.js` for rules and game state
+- `react-chessboard` for the animated board
 
-## Local development
+Everything runs in the browser. Evaluation is a material + center + development heuristic — not a chess engine.
+
+## Run locally
 
 ```bash
-cp .env.example .env
-# For local only:
-# GATE_DISABLED=1
 npm install
 npm run dev
 ```
 
-App: `http://127.0.0.1:5173` (Vite) talking to `http://127.0.0.1:3780/api`.
+Open `http://127.0.0.1:5173`.
 
 ```bash
 npm run build
-GATE_DISABLED=1 npm start
+npm run preview
 ```
 
-## Closed demo (production on this host)
+## How to use
 
-Set in `.env` (never commit real values):
+- **Click** a piece to glow every legal square, then click (or drag) to move.
+- **Coach Mode** pulses red on pieces that are under attack and writes a short explanation after each move. The evaluation bar is a simulated White/Black advantage meter.
+- **Arrows:** right-drag on desktop. On a phone, tap **Arrows**, then two squares. The coach also draws plan / check arrows.
+- **Hint** draws a suggested move; **Play hint** makes it.
+- **Undo / Redo / Reset / Flip** are in the control dock.
+- Language toggle **עב / EN** (Hebrew is the default; the board stays LTR).
 
-- `GATE_USER` / `GATE_PASSWORD` — HTTP Basic Auth
-- `GATE_PATH` — unguessable URL path segment
-- `JWT_SECRET`
+## Notes
 
-Then:
-
-```bash
-npm run build
-npm start
-```
-
-The app is only reachable at `/${GATE_PATH}/` after Basic Auth. Other paths return 404.
-
-## Demo accounts (inside the app)
-
-| Role     | Email              | Password |
-|----------|--------------------|----------|
-| Provider | coach@flow.demo    | demo123  |
-| Client   | client@flow.demo   | demo123  |
-
-## $0 hosting
-
-This demo is meant to run on a free host or a Cursor VM plus a **Cloudflare Quick Tunnel** (`trycloudflare.com`) — no paid plan and no credit card.
+This repository previously hosted a booking demo (Flow). That product has been replaced. The default Vite app *is* Maestro.
