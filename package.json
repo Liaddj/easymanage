@@ -1,29 +1,28 @@
 {
-  "name": "flow",
-  "version": "1.0.0",
+  "name": "maestro-chess",
   "private": true,
-  "description": "Flow — dual-sided booking for solo fitness and tennis coaches (Israel)",
+  "version": "1.0.0",
+  "description": "Maestro — frontend-only educational chess coach (React + Vite)",
   "type": "module",
   "scripts": {
-    "dev": "GATE_DISABLED=1 concurrently -k \"npm:dev:api\" \"npm:dev:web\"",
-    "dev:api": "GATE_DISABLED=1 node --watch server/index.js",
-    "dev:web": "vite",
+    "dev": "vite",
     "build": "vite build",
-    "start": "NODE_ENV=production node server/index.js",
-    "test:api": "node server/api.test.js"
+    "preview": "vite preview"
   },
   "engines": {
     "node": ">=20"
   },
   "dependencies": {
-    "express": "^4.21.2",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "react-router-dom": "^6.28.0"
+    "chess.js": "^1.4.0",
+    "framer-motion": "^12.23.12",
+    "react": "^19.1.1",
+    "react-chessboard": "^5.12.1",
+    "react-dom": "^19.1.1"
   },
   "devDependencies": {
+    "@tailwindcss/vite": "^4.1.12",
     "@vitejs/plugin-react": "^4.3.4",
-    "concurrently": "^9.1.2",
+    "tailwindcss": "^4.1.12",
     "vite": "^5.4.11"
   }
 }
