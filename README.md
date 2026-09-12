@@ -37,7 +37,7 @@ npm run preview
 - **Coach Mode** pulses red on pieces that are under attack and explains ideas after each move (free play and vs computer).
 - **Arrows:** right-drag on desktop. On a phone, tap **Arrows**, then two squares.
 - **Hint** draws a suggested move; **Play hint** makes it. **H** on the keyboard also requests a hint. **Esc** clears a selection.
-- Language toggle **עב / EN** (Hebrew is the default; the board stays LTR). Sound is optional.
+- Language toggle **HE / EN** (English is the default; Hebrew is optional. The board stays LTR). Sound is optional.
 
 ## Notes
 

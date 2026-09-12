@@ -13,7 +13,7 @@ import { analyzeMove, hintArrows, puzzleAnalysis, puzzleResultAnalysis, welcomeA
 import { getPuzzle, nextPuzzle, puzzleHumanColor, STAGES } from "../lib/curriculum.js";
 import { computerAcceptsDraw, pickComputerMove, thinkDelayMs } from "../lib/engine.js";
 import { evaluatePosition, scoreToWhitePercent, suggestMove } from "../lib/evaluate.js";
-import { loadProgress, markPuzzleResult, pathStats, rememberLocation, stageStats } from "../lib/progress.js";
+import { isStageUnlocked, loadProgress, markPuzzleResult, pathStats, rememberLocation, stageStats } from "../lib/progress.js";
 import { gradePuzzleMove, nextAutoReply } from "../lib/puzzle.js";
 import { playSound, soundForMove, unlockSounds } from "../lib/sounds.js";
 import { assertLegalTurn, canDragPiece, canSelectSquare, redoSteps, undoSteps } from "../lib/turns.js";
@@ -80,8 +80,16 @@ export function useChessGame() {
   });
 
   const [progress, setProgress] = useState(storedProgress);
-  const [stageId, setStageId] = useState(storedProgress.lastStageId);
-  const [puzzleId, setPuzzleId] = useState(storedProgress.lastPuzzleId);
+  const [stageId, setStageId] = useState(() =>
+    isStageUnlocked(STAGES, storedProgress.lastStageId, storedProgress)
+      ? storedProgress.lastStageId
+      : STAGES[0].id,
+  );
+  const [puzzleId, setPuzzleId] = useState(() =>
+    isStageUnlocked(STAGES, storedProgress.lastStageId, storedProgress)
+      ? storedProgress.lastPuzzleId
+      : STAGES[0].puzzles[0].id,
+  );
   const [puzzleStep, setPuzzleStep] = useState(0);
   const [puzzleState, setPuzzleState] = useState("play");
   const [hintUsed, setHintUsed] = useState(false);
@@ -408,6 +416,7 @@ export function useChessGame() {
 
   const openStage = useCallback(
     (nextStageId, nextPuzzleId) => {
+      if (!isStageUnlocked(STAGES, nextStageId, progress)) return false;
       const loc = getPuzzle(nextStageId, nextPuzzleId);
       setStageId(loc.stage.id);
       setPuzzleId(loc.puzzle.id);
@@ -419,8 +428,9 @@ export function useChessGame() {
         setModeState("puzzle");
         persistPrefs({ mode: "puzzle" });
       }
+      return true;
     },
-    [loadPosition, mode, persistPrefs],
+    [loadPosition, mode, persistPrefs, progress],
   );
 
   const retryPuzzle = useCallback(() => {

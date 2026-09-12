@@ -73,10 +73,65 @@ export function stageStats(stage, progress) {
 export function pathStats(stages, progress) {
   let total = 0;
   let solved = 0;
+  let scoreSum = 0;
   for (const stage of stages) {
     const stats = stageStats(stage, progress);
     total += stats.total;
     solved += stats.solved;
+    scoreSum += stageScore(stage, progress);
   }
-  return { total, solved };
+  const percent = total === 0 ? 0 : Math.round((solved / total) * 100);
+  const score = stages.length === 0 ? 0 : Math.round(scoreSum / stages.length);
+  return { total, solved, percent, score };
+}
+
+export function puzzleScore(record) {
+  if (!record?.solved) return 0;
+  if ((record.failedAttempts ?? 0) === 0) return 100;
+  if (record.failedAttempts === 1) return 80;
+  if (record.failedAttempts === 2) return 60;
+  return 40;
+}
+
+export function stageScore(stage, progress) {
+  if (!stage.puzzles.length) return 0;
+  const total = stage.puzzles.reduce((sum, puzzle) => sum + puzzleScore(progress.puzzles[puzzle.id]), 0);
+  return Math.round(total / stage.puzzles.length);
+}
+
+export function isStageUnlocked(stages, stageId, progress) {
+  const index = stages.findIndex((stage) => stage.id === stageId);
+  if (index <= 0) return true;
+  return stageStats(stages[index - 1], progress).complete;
+}
+
+export function stageStatus(stages, stage, progress, currentStageId) {
+  const stats = stageStats(stage, progress);
+  if (stats.complete) return "complete";
+  if (!isStageUnlocked(stages, stage.id, progress)) return "locked";
+  if (stage.id === currentStageId) return "in_progress";
+  if (stats.solved > 0) return "in_progress";
+  return "ready";
+}
+
+export function firstOpenPuzzle(stage, progress) {
+  return stage.puzzles.find((puzzle) => !progress.puzzles[puzzle.id]?.solved)?.id ?? stage.puzzles[0]?.id;
+}
+
+export function dashboardRows(stages, progress, currentStageId) {
+  return stages.map((stage) => {
+    const stats = stageStats(stage, progress);
+    const checks = stage.puzzles.map((puzzle) => Boolean(progress.puzzles[puzzle.id]?.solved));
+    return {
+      id: stage.id,
+      title: stage.title,
+      status: stageStatus(stages, stage, progress, currentStageId),
+      unlocked: isStageUnlocked(stages, stage.id, progress),
+      solved: stats.solved,
+      total: stats.total,
+      percent: stats.total === 0 ? 0 : Math.round((stats.solved / stats.total) * 100),
+      score: stageScore(stage, progress),
+      checks,
+    };
+  });
 }

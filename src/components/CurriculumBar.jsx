@@ -1,4 +1,5 @@
 import { pick } from "../i18n.js";
+import { isStageUnlocked } from "../lib/progress.js";
 
 export default function CurriculumBar({
   lang,
@@ -28,17 +29,21 @@ export default function CurriculumBar({
       <div className="slim-scroll flex gap-1 overflow-x-auto pb-0.5">
         {stages.map((item) => {
           const active = item.id === stage.id;
+          const unlocked = isStageUnlocked(stages, item.id, progress);
           const solved = item.puzzles.filter((p) => progress.puzzles[p.id]?.solved).length;
           return (
             <button
               key={item.id}
               type="button"
-              onClick={() => onOpen(item.id, item.puzzles[0].id)}
+              onClick={() => unlocked && onOpen(item.id, item.puzzles[0].id)}
+              disabled={!unlocked}
+              title={unlocked ? pick(lang, item.title) : t("lockedHint")}
               aria-current={active ? "step" : undefined}
-              className={`shrink-0 whitespace-nowrap rounded-lg px-2 py-1 text-[10px] font-semibold ${
+              className={`shrink-0 whitespace-nowrap rounded-lg px-2 py-1 text-[10px] font-semibold disabled:opacity-40 ${
                 active ? "bg-cyan-400/18 text-cyan-50" : "bg-white/[0.04] text-white/55"
               }`}
             >
+              {unlocked ? "" : "🔒 "}
               {pick(lang, item.title)}
               <span className="ms-1 text-white/35">
                 {solved}/{item.puzzles.length}

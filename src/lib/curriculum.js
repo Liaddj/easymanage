@@ -13,6 +13,18 @@ export const STAGES = [
       en: "One move, two jobs. Check the king and attack a heavy piece — or fork two unprotected units.",
       he: "מסע אחד, שתי מטרות. שח למלך ותקיפת כלי כבד — או מזלג לשני כלים לא מוגנים.",
     },
+    learn: {
+      en: "A fork is one move that attacks two targets at the same time — often the king plus a queen or rook.",
+      he: "מזלג הוא מסע אחד שתוקף שתי מטרות בבת אחת — לעיתים המלך ועוד מלכה או צריח.",
+    },
+    why: {
+      en: "The opponent cannot save both pieces. That is how short tactics become extra material, then a won endgame.",
+      he: "היריב אינו יכול להציל את שני הכלים. כך טקטיקה קצרה הופכת לחומר עודף, ואז לסיום זכייה.",
+    },
+    how: {
+      en: "Look for a check that also hits a loose queen or rook, or a pawn push that attacks two pieces. One clean move solves each drill.",
+      he: "חפשו שח שפוגע גם במלכה או צריח תלויים, או דחיפת רגלי שתוקפת שני כלים. מסע אחד נקי פותר כל תרגיל.",
+    },
     goal: {
       en: "Find the fork that wins material.",
       he: "מצאו את המזלג שזוכה בחומר.",
@@ -116,6 +128,18 @@ export const STAGES = [
       en: "A pinned piece cannot legally leave the line to its king. Capture it, or pile on.",
       he: "כלי רתוק אינו יכול לעזוב את הקו אל המלך. הכניסו אותו, או העמיסו עליו.",
     },
+    learn: {
+      en: "A pin lines up a piece with its king. If it is absolute, that piece is not allowed to move off the line.",
+      he: "ריתוק מיישר כלי עם המלך שלו. בריתוק מוחלט אסור לכלי לרדת מהקו.",
+    },
+    why: {
+      en: "Pinned pieces are weaker than they look. You can capture them, or attack them again until they fall.",
+      he: "כלים רתוקים חלשים ממה שהם נראים. אפשר להכות אותם, או להעמיס עד שיפלו.",
+    },
+    how: {
+      en: "Find the pin line (file, rank, or diagonal). Capture the stuck piece, or add a second attacker. Recapture is often illegal.",
+      he: "מצאו את קו הריתוק. הכניסו את הכלי התקוע, או הוסיפו תוקף שני. הכאה בחזרה לעיתים לא חוקית.",
+    },
     goal: {
       en: "Exploit the absolute pin to win material.",
       he: "נצלו את הריתוק המוחלט כדי לזכות בחומר.",
@@ -198,6 +222,18 @@ export const STAGES = [
       en: "The opposite of a pin: the king (or a valuable piece) stands in front. Check it, take what hides behind.",
       he: "ההפך מריתוק: המלך (או כלי יקר) עומד מלפנים. תנו שח, קחו את מה שמסתתר מאחור.",
     },
+    learn: {
+      en: "A skewer checks (or attacks) the valuable piece in front. When it steps aside, the piece behind is taken.",
+      he: "שיפוד נותן שח (או תוקף) את הכלי היקר מלפנים. כשהוא זז, הכלי מאחור נופל.",
+    },
+    why: {
+      en: "It is the mirror of a pin and a common way to win a queen after a king is forced to move.",
+      he: "זה המראה של ריתוק, ודרך נפוצה לזכות במלכה אחרי שהמלך חייב לזוז.",
+    },
+    how: {
+      en: "Align king and queen on a file, rank, or long diagonal. Check through the king, then take the piece that was hiding.",
+      he: "יישרו מלך ומלכה על טור, שורה או אלכסון. שח דרך המלך, ואז קחו את מה שהסתתר.",
+    },
     goal: {
       en: "Skewer the king and win the piece behind it.",
       he: "שפדו את המלך וזכו בכלי שמאחוריו.",
@@ -256,6 +292,18 @@ export const STAGES = [
     blurb: {
       en: "Move the front piece and the piece behind it suddenly attacks. Double checks are often decisive.",
       he: "הזיזו את הכלי הקדמי — והכלי מאחוריו תוקף בבת אחת. שח כפול מכריע לעיתים קרובות.",
+    },
+    learn: {
+      en: "A discovered attack unmasks a rook, bishop, or queen by moving the piece that stood in front of it.",
+      he: "התקפה נגלית חושפת צריח, רץ או מלכה על ידי הזזת הכלי שחסם אותם.",
+    },
+    why: {
+      en: "Two threats appear in one tempo. If the front piece also checks, the opponent rarely has time to save everything.",
+      he: "שני איומים במסע אחד. אם הכלי הקדמי גם נותן שח, ליריב כמעט אין זמן להציל הכול.",
+    },
+    how: {
+      en: "See which friendly piece is masked. Step the front unit off the line — preferably with a check or a second hit on the target.",
+      he: "ראו איזה כלי ידידותי מוסתר. הורידו את הכלי הקדמי מהקו — עדיף עם שח או פגיעה שנייה במטרה.",
     },
     goal: {
       en: "Unmask the piece behind and win material or give a crushing check.",
@@ -317,6 +365,18 @@ export const STAGES = [
     blurb: {
       en: "Outposts, back-rank geometry, and classic sacrifices — plans, not just one-move tricks.",
       he: "מוצבים, גאומטריית שורה אחורית, והקרבות קלאסיות — תוכניות, לא רק טריקים של מסע אחד.",
+    },
+    learn: {
+      en: "Middlegames are about plans: weak back ranks, outpost squares, and classic king-side sacrifices.",
+      he: "מרכז המשחק הוא תוכניות: שורה אחורית חלשה, משבצות מוצב, והקרבות קלאסיות על המלך.",
+    },
+    why: {
+      en: "Tactics win games, but motifs tell you where to look. The same ideas repeat in real play vs the computer.",
+      he: "טקטיקה מנצחת משחקים, אבל מוטיבים אומרים איפה לחפש. אותם רעיונות חוזרים במשחק אמיתי נגד המחשב.",
+    },
+    how: {
+      en: "Name the motif first (mate, outpost, sacrifice), then play the one move that makes that plan real.",
+      he: "תנו שם למוטיב קודם (מט, מוצב, הקרבה), ואז בצעו את המסע היחיד שהופך את התוכנית למציאות.",
     },
     goal: {
       en: "Play the thematic move that defines the position.",
@@ -398,6 +458,18 @@ export const STAGES = [
     blurb: {
       en: "Opposition, a rook mate, and escorting a pawn. Endgames are where extra material becomes a point.",
       he: "אופוזיציה, מט צריח, וליווי רגלי. בסיום חומר עודף הופך לנקודה.",
+    },
+    learn: {
+      en: "Endgames are precise: cut the king off with a rook, take the opposition, and escort a pawn with your king.",
+      he: "סיומים דורשים דיוק: חתכו את המלך בצריח, קחו אופוזיציה, וליוו רגלי עם המלך.",
+    },
+    why: {
+      en: "A one-pawn advantage only counts if you know how to promote. Most club games are decided here.",
+      he: "יתרון רגלי נספר רק אם יודעים להכתיר. רוב משחקי המועדון מוכרעים כאן.",
+    },
+    how: {
+      en: "Do not rush the pawn. Use the king first, keep opposition, and mate on the edge when the rook can cut the file or rank.",
+      he: "אל תמהרו את הרגלי. השתמשו במלך קודם, שמרו אופוזיציה, ותנו מט על הקצה כשהצריח חותך טור או שורה.",
     },
     goal: {
       en: "Play the precise endgame move.",

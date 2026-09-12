@@ -13,14 +13,17 @@ import Header from "./components/Header.jsx";
 import ModeSwitcher from "./components/ModeSwitcher.jsx";
 import MoveList from "./components/MoveList.jsx";
 import PromotionDialog from "./components/PromotionDialog.jsx";
+import ProgressDashboard from "./components/ProgressDashboard.jsx";
 import PuzzleGoal from "./components/PuzzleGoal.jsx";
 import PuzzleOverlay from "./components/PuzzleOverlay.jsx";
 import ResignDrawBar from "./components/ResignDrawBar.jsx";
+import StageLesson from "./components/StageLesson.jsx";
 import { useChessGame } from "./hooks/useChessGame.js";
+import { firstOpenPuzzle } from "./lib/progress.js";
 import { t as translate } from "./i18n.js";
 
 export default function App() {
-  const [lang, setLang] = useState(() => localStorage.getItem("maestro_lang") || "he");
+  const [lang, setLang] = useState(() => localStorage.getItem("maestro_lang_v2") || "en");
   const game = useChessGame();
   const t = (key) => translate(lang, key);
 
@@ -28,7 +31,7 @@ export default function App() {
     document.documentElement.lang = lang === "he" ? "he" : "en";
     document.documentElement.dir = lang === "he" ? "rtl" : "ltr";
     document.title = `${translate(lang, "brand")} — ${translate(lang, "tagline")}`;
-    localStorage.setItem("maestro_lang", lang);
+    localStorage.setItem("maestro_lang_v2", lang);
   }, [lang]);
 
   useEffect(() => {
@@ -83,6 +86,18 @@ export default function App() {
 
       {game.mode === "puzzle" ? (
         <>
+          <ProgressDashboard
+            lang={lang}
+            t={t}
+            stages={game.stages}
+            progress={game.progress}
+            currentStageId={game.stageId}
+            onOpen={(stageId) => {
+              const stage = game.stages.find((item) => item.id === stageId);
+              if (!stage) return;
+              game.openStage(stageId, firstOpenPuzzle(stage, game.progress));
+            }}
+          />
           <CurriculumBar
             lang={lang}
             t={t}
@@ -94,6 +109,7 @@ export default function App() {
             overallProgress={game.overallProgress}
             onOpen={game.openStage}
           />
+          <StageLesson lang={lang} t={t} stage={game.stage} />
           <PuzzleGoal
             lang={lang}
             t={t}
@@ -118,10 +134,10 @@ export default function App() {
         />
       ) : null}
 
-      <main className="mt-1.5 flex min-h-0 flex-1 flex-col gap-1.5 lg:flex-row lg:gap-3">
-        <section className="flex min-h-0 flex-[1.15] flex-col gap-1">
+      <main className="mt-1.5 flex flex-col gap-1.5 lg:flex-row lg:gap-3">
+        <section className="flex flex-col gap-1 lg:min-w-0 lg:flex-[1.15]">
           {game.mode !== "puzzle" ? <CapturedPieces taken={game.taken} material={game.material} t={t} /> : null}
-          <div className="relative flex min-h-0 flex-1 items-center justify-center gap-2">
+          <div className="relative flex items-center justify-center gap-2 py-1">
             <div className="board-ltr relative flex min-h-0 items-center gap-2">
               <EvaluationBar percent={game.evalPercent} score={game.evalScore} t={t} />
               <div className="relative min-h-0">
@@ -159,9 +175,9 @@ export default function App() {
           </div>
         </section>
 
-        <aside className="flex min-h-0 shrink-0 flex-col gap-1.5 lg:w-[22rem] lg:max-w-[38%]">
+        <aside className="flex shrink-0 flex-col gap-1.5 pb-2 lg:w-[22rem] lg:max-w-[38%]">
           {game.mode !== "puzzle" ? (
-            <div className="min-h-0 max-h-24 shrink-0 lg:max-h-none lg:flex-[1.4]">
+            <div className="min-h-0 shrink-0 lg:flex-[1.4]">
               <CoachPanel
                 lang={lang}
                 t={t}
@@ -177,7 +193,7 @@ export default function App() {
               />
             </div>
           ) : null}
-          <div className={`h-[3.2rem] shrink-0 lg:h-auto lg:min-h-[8rem] lg:flex-1 ${game.mode === "puzzle" ? "hidden lg:flex" : ""}`}>
+          <div className={`min-h-[4.4rem] shrink-0 ${game.mode === "puzzle" ? "lg:min-h-[8rem]" : ""}`}>
             <MoveList pairs={game.movePairs} t={t} />
           </div>
           {game.mode !== "puzzle" ? (

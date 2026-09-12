@@ -29,7 +29,7 @@ export default function PuzzleGoal({ lang, t, stage, puzzle, puzzleState, onRetr
         {pick(lang, stage.goal)}
       </p>
       <h3 className="truncate text-sm font-semibold text-white">{title}</h3>
-      <p className="line-clamp-2 text-xs leading-snug text-white/65">{body}</p>
+      <p className="text-xs leading-relaxed text-white/70">{body}</p>
       {failed || success || pathDone ? (
         <div className="mt-2 flex flex-wrap gap-1.5">
           {failed ? (

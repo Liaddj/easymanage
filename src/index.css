@@ -12,12 +12,21 @@
 }
 
 html,
-body,
+body {
+  min-height: 100dvh;
+  height: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
+  background: #05060a;
+  color: #e5e7eb;
+}
+
 #root {
-  height: 100%;
-  height: 100dvh;
-  max-height: 100dvh;
-  overflow: hidden;
+  position: relative;
+  z-index: 1;
+  min-height: 100dvh;
+  height: auto;
+  overflow: visible;
   background: #05060a;
   color: #e5e7eb;
 }
@@ -42,11 +51,6 @@ body::before {
   background-size: auto, auto, auto, 42px 42px, 42px 42px;
   mask-image: radial-gradient(ellipse at center, #000 42%, transparent 88%);
   z-index: 0;
-}
-
-#root {
-  position: relative;
-  z-index: 1;
 }
 
 @keyframes threat-pulse {
@@ -94,7 +98,8 @@ body::before {
 }
 
 .board-frame {
-  width: min(100%, calc(100dvh - 14.2rem));
+  width: min(100%, 22rem);
+  max-width: calc(100vw - 3.25rem);
   aspect-ratio: 1 / 1;
   border-radius: 16px;
   padding: 3px;
@@ -104,9 +109,15 @@ body::before {
     0 0 80px rgba(168, 85, 247, 0.12);
 }
 
+@media (min-width: 640px) {
+  .board-frame {
+    width: min(100%, 28rem);
+  }
+}
+
 @media (min-width: 1024px) {
   .board-frame {
-    width: min(100%, calc(100dvh - 8.6rem));
+    width: min(100%, 36rem);
   }
 }
 
