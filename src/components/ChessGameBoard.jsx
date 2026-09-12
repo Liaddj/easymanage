@@ -72,7 +72,6 @@ export default function ChessGameBoard({ gameState }) {
     arrowDraft,
     tryMove,
     handleSquareClick,
-    setUserArrows,
     gameOver,
     pendingPromotion,
     arrowMode,
@@ -101,19 +100,21 @@ export default function ChessGameBoard({ gameState }) {
       showAnimations: true,
       allowDragging: !gameOver && !pendingPromotion && !arrowMode,
       allowDrawingArrows: !arrowMode,
-      clearArrowsOnClick: false,
-      clearArrowsOnPositionChange: false,
+      clearArrowsOnClick: true,
+      clearArrowsOnPositionChange: true,
       arrows,
       arrowOptions: {
+        colors: {
+          default: "#c084fc",
+          shift: "#22d3ee",
+          ctrl: "#fb7185",
+          alt: "#a3e635",
+        },
         color: "#c084fc",
-        secondaryColor: "#22d3ee",
-        tertiaryColor: "#a3e635",
+        opacity: 0.85,
       },
-      onArrowsChange: ({ arrows: next }) => {
-        // Coach/hint arrows are owned by React state; persist only user-drawn ones.
-        const managed = new Set(["#22d3ee", "#a3e635", "#fb7185"]);
-        setUserArrows(next.filter((arrow) => !managed.has(arrow.color)));
-      },
+      // Right-drag arrows live in the board's internal state. We only pass
+      // coach / hint / tap-mode arrows here so they are not drawn twice.
       squareStyles,
       darkSquareStyle: { backgroundColor: "#16122b" },
       lightSquareStyle: { backgroundColor: "#2a3560" },
@@ -147,7 +148,6 @@ export default function ChessGameBoard({ gameState }) {
       handleSquareClick,
       orientation,
       pendingPromotion,
-      setUserArrows,
       squareStyles,
       tryMove,
     ],
@@ -155,7 +155,9 @@ export default function ChessGameBoard({ gameState }) {
 
   return (
     <div className="board-ltr board-frame relative mx-auto">
-      <Chessboard options={options} />
+      <div className="h-full w-full overflow-hidden rounded-[13px] bg-void">
+        <Chessboard options={options} />
+      </div>
     </div>
   );
 }

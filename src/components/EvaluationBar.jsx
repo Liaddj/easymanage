@@ -1,29 +1,23 @@
 import { motion } from "framer-motion";
 
-/**
- * Simulated evaluation bar. White advantage grows from the bottom (standard chess UI).
- */
+/** White advantage grows from the bottom (standard chess UI). Always LTR. */
 export default function EvaluationBar({ percent, score, t }) {
-  const whitePct = Math.max(4, Math.min(96, percent));
+  const whitePct = Math.max(6, Math.min(94, percent));
   const label =
     Math.abs(score) < 40 ? t("evalEven") : score > 0 ? t("evalWhite") : t("evalBlack");
-  const pawns = (score / 100).toFixed(1);
+  const pawns = `${score >= 0 ? "+" : ""}${(score / 100).toFixed(1)}`;
 
   return (
-    <div className="flex h-full w-3.5 shrink-0 flex-col overflow-hidden rounded-full border border-white/10 bg-zinc-950 sm:w-4">
-      <div className="relative flex h-full w-full flex-col-reverse">
+    <div className="board-ltr flex h-full shrink-0 flex-col items-center gap-1" title={`${label} ${pawns}`}>
+      <span className="text-[10px] font-bold text-violet-200/90">B</span>
+      <div className="relative flex h-full w-4 flex-col-reverse overflow-hidden rounded-full border border-cyan-300/25 bg-zinc-950 sm:w-5">
         <motion.div
-          className="w-full bg-gradient-to-t from-zinc-100 to-cyan-100"
+          className="w-full bg-gradient-to-t from-zinc-100 via-cyan-100 to-white"
           animate={{ height: `${whitePct}%` }}
           transition={{ type: "spring", stiffness: 140, damping: 22 }}
         />
-        <div className="absolute inset-x-0 top-1 hidden text-center text-[8px] font-bold text-violet-200/80 sm:block">
-          {score < 0 ? pawns : ""}
-        </div>
-        <div className="absolute inset-x-0 bottom-1 hidden text-center text-[8px] font-bold text-void sm:block">
-          {score > 0 ? `+${pawns}` : ""}
-        </div>
       </div>
+      <span className="text-[10px] font-bold text-cyan-100">W</span>
       <span className="sr-only">
         {label} {pawns}
       </span>

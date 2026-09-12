@@ -25,6 +25,23 @@ export default function App() {
     localStorage.setItem("maestro_lang", lang);
   }, [lang]);
 
+  useEffect(() => {
+    function onKey(event) {
+      const key = event.key.toLowerCase();
+      if ((event.metaKey || event.ctrlKey) && key === "z") {
+        event.preventDefault();
+        if (event.shiftKey) game.redo();
+        else game.undo();
+      }
+      if ((event.metaKey || event.ctrlKey) && key === "y") {
+        event.preventDefault();
+        game.redo();
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [game.redo, game.undo]);
+
   const promoColor = game.pendingPromotion
     ? game.game.get(game.pendingPromotion.from)?.color ?? game.game.turn()
     : game.game.turn();
@@ -32,7 +49,6 @@ export default function App() {
   return (
     <AppShell>
       <Header
-        lang={lang}
         t={t}
         statusLabel={t(game.status)}
         coachMode={game.coachMode}
@@ -43,23 +59,31 @@ export default function App() {
         <section className="flex min-h-0 flex-[1.15] flex-col gap-1.5">
           <CapturedPieces taken={game.taken} material={game.material} t={t} />
           <div className="relative flex min-h-0 flex-1 items-center justify-center gap-2">
-            <EvaluationBar percent={game.evalPercent} score={game.evalScore} t={t} />
-            <div className="relative min-h-0">
-              <ChessGameBoard gameState={game} />
-              <AnimatePresence>
-                {game.pendingPromotion ? (
-                  <PromotionDialog
-                    t={t}
-                    color={promoColor}
-                    onPick={game.completePromotion}
-                    onCancel={game.cancelPromotion}
-                  />
-                ) : null}
-              </AnimatePresence>
-              <GameOverOverlay t={t} status={game.status} onReset={game.reset} />
+            <div className="board-ltr relative flex min-h-0 items-center gap-2">
+              <EvaluationBar percent={game.evalPercent} score={game.evalScore} t={t} />
+              <div className="relative min-h-0">
+                <ChessGameBoard gameState={game} />
+                <AnimatePresence>
+                  {game.pendingPromotion ? (
+                    <PromotionDialog
+                      t={t}
+                      color={promoColor}
+                      onPick={game.completePromotion}
+                      onCancel={game.cancelPromotion}
+                    />
+                  ) : null}
+                </AnimatePresence>
+                <GameOverOverlay t={t} status={game.status} onReset={game.reset} />
+              </div>
             </div>
           </div>
-          <p className="hidden px-1 text-[10px] text-white/30 sm:block">{t("drawHint")}</p>
+          {game.arrowMode ? (
+            <p className="rounded-lg border border-violet-300/30 bg-violet-400/10 px-2 py-1 text-center text-[11px] text-violet-100">
+              {t("arrowModeOn")}
+            </p>
+          ) : (
+            <p className="hidden px-1 text-[10px] text-cyan-100/35 sm:block">{t("drawHint")}</p>
+          )}
         </section>
 
         <aside className="flex min-h-0 shrink-0 flex-col gap-2 lg:w-[22rem] lg:max-w-[38%]">
@@ -71,6 +95,7 @@ export default function App() {
               evalScore={game.evalScore}
               evalPercent={game.evalPercent}
               coachMode={game.coachMode}
+              hintMove={game.hintMove}
             />
           </div>
           <div className="h-[4.4rem] shrink-0 lg:h-auto lg:min-h-[8rem] lg:flex-1">

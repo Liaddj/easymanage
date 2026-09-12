@@ -9,7 +9,7 @@ const TONE = {
   success: "from-violet-400/18 to-transparent border-violet-300/30",
 };
 
-export default function CoachPanel({ lang, t, analysis, evalScore, evalPercent, coachMode, opening }) {
+export default function CoachPanel({ lang, t, analysis, evalScore, evalPercent, coachMode, opening, hintMove }) {
   const tone = TONE[analysis.tone] ?? TONE.info;
   const title = pick(lang, analysis.title);
   const body = pick(lang, analysis.body);
@@ -53,6 +53,11 @@ export default function CoachPanel({ lang, t, analysis, evalScore, evalPercent, 
               <p className="mt-1 line-clamp-4 text-xs leading-relaxed text-white/70 sm:line-clamp-6 sm:text-[13px]">
                 {body}
               </p>
+              {hintMove ? (
+                <p className="mt-2 rounded-lg border border-lime-300/30 bg-lime-400/10 px-2 py-1 text-[11px] text-lime-100">
+                  {t("hintReady")}: <span className="font-mono">{hintMove.san}</span>
+                </p>
+              ) : null}
             </motion.div>
           </AnimatePresence>
         ) : (

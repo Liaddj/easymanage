@@ -163,6 +163,7 @@ export function useChessGame() {
   const requestHint = useCallback(() => {
     const move = suggestMove(game);
     setHintMove(move);
+    setArrowMode(false);
     return move;
   }, [game]);
 
