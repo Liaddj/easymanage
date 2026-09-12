@@ -359,10 +359,13 @@ export function buildCoachArrows(chess, lastMove, ply = 0) {
   }
 
   // Nudge an undeveloped knight toward a natural square.
+  const natural = new Set(
+    chess.turn() === "w" ? ["c3", "f3", "d2", "e2"] : ["c6", "f6", "d7", "e7"],
+  );
   const undeveloped = chess.moves({ verbose: true }).find((m) => {
     if (m.piece !== "n") return false;
     const home = m.color === "w" ? ["b1", "g1"] : ["b8", "g8"];
-    return home.includes(m.from);
+    return home.includes(m.from) && natural.has(m.to);
   });
   if (undeveloped && ply <= 16) {
     arrows.push({ startSquare: undeveloped.from, endSquare: undeveloped.to, color: COACH_ARROW });
