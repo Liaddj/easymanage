@@ -1,6 +1,18 @@
 import { motion } from "framer-motion";
+import TurnBanner from "./TurnBanner.jsx";
 
-export default function Header({ t, statusLabel, onToggleLang, coachMode }) {
+export default function Header({
+  t,
+  status,
+  mode,
+  thinking,
+  isPlayerTurn,
+  humanColor,
+  coachMode,
+  soundOn,
+  onToggleLang,
+  onToggleSound,
+}) {
   return (
     <header className="glass-panel flex shrink-0 items-center justify-between gap-2 rounded-2xl px-3 py-2 sm:px-4">
       <div className="flex min-w-0 items-center gap-2.5">
@@ -26,11 +38,18 @@ export default function Header({ t, statusLabel, onToggleLang, coachMode }) {
             </h1>
             <span className="hidden truncate text-[11px] text-cyan-100/50 sm:inline">{t("tagline")}</span>
           </div>
-          <p className="truncate text-xs font-medium text-cyan-200">{statusLabel}</p>
+          <TurnBanner
+            t={t}
+            status={status}
+            mode={mode}
+            thinking={thinking}
+            isPlayerTurn={isPlayerTurn}
+            humanColor={humanColor}
+          />
         </div>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1.5">
         <span
           className={`hidden rounded-full border px-2.5 py-1 text-[10px] font-semibold tracking-wide uppercase sm:inline ${
             coachMode
@@ -40,6 +59,15 @@ export default function Header({ t, statusLabel, onToggleLang, coachMode }) {
         >
           {coachMode ? t("coachOn") : t("coachOff")}
         </span>
+        <button
+          type="button"
+          onClick={onToggleSound}
+          className="glow-cyan grid h-9 w-9 place-items-center rounded-xl border border-cyan-300/25 bg-cyan-400/10 text-sm text-cyan-50"
+          aria-label={soundOn ? t("soundOn") : t("soundOff")}
+          aria-pressed={soundOn}
+        >
+          {soundOn ? "♪" : "ø"}
+        </button>
         <button
           type="button"
           onClick={onToggleLang}

@@ -382,3 +382,36 @@ export function hintArrows(move) {
 export function welcomeAnalysis() {
   return { ...WELCOME, opening: null, arrows: [] };
 }
+
+export function puzzleAnalysis(puzzle, tone = "info") {
+  if (!puzzle) return welcomeAnalysis();
+  return {
+    id: `puzzle-${puzzle.id}`,
+    tone,
+    title: puzzle.title,
+    body: puzzle.goal,
+    opening: null,
+    arrows: [],
+  };
+}
+
+export function puzzleResultAnalysis(puzzle, kind) {
+  if (kind === "success") {
+    return {
+      id: `ok-${puzzle.id}`,
+      tone: "success",
+      title: { en: "Correct", he: "נכון" },
+      body: puzzle.success,
+      opening: null,
+      arrows: [],
+    };
+  }
+  return {
+    id: `fail-${puzzle.id}`,
+    tone: "danger",
+    title: { en: "Not that", he: "לא זה" },
+    body: puzzle.fail,
+    opening: null,
+    arrows: [],
+  };
+}

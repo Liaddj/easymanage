@@ -6,7 +6,7 @@ export default function MoveList({ pairs, t }) {
       </h2>
       <ol className="slim-scroll flex min-h-0 flex-1 gap-1.5 overflow-x-auto overflow-y-hidden px-3 py-2 lg:flex-col lg:overflow-x-hidden lg:overflow-y-auto">
         {pairs.length === 0 ? (
-          <li className="text-xs text-white/30">1. …</li>
+          <li className="text-xs text-white/35">{t("noMoves")}</li>
         ) : (
           pairs.map((pair) => (
             <li

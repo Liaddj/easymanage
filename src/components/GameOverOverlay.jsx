@@ -12,6 +12,13 @@ export default function GameOverOverlay({ t, status, onReset }) {
           ? t("stalemate")
           : t("draw");
 
+  const detail =
+    status === "stalemate"
+      ? t("stalemateDetail")
+      : status === "draw"
+        ? t("drawDetail")
+        : t("checkmateDetail");
+
   return (
     <motion.div
       className="absolute inset-0 z-10 grid place-items-center bg-black/45 backdrop-blur-[2px]"
@@ -22,8 +29,13 @@ export default function GameOverOverlay({ t, status, onReset }) {
         initial={{ y: 12, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         className="glass-panel mx-4 rounded-2xl border-cyan-300/20 px-6 py-5 text-center shadow-[0_0_40px_rgba(34,211,238,0.15)]"
+        role="alertdialog"
+        aria-labelledby="game-over-title"
       >
-        <p className="font-display text-lg tracking-wide text-white">{title}</p>
+        <p id="game-over-title" className="font-display text-lg tracking-wide text-white">
+          {title}
+        </p>
+        <p className="mt-1 text-xs text-white/55">{detail}</p>
         <button
           type="button"
           onClick={onReset}

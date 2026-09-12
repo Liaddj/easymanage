@@ -25,6 +25,7 @@ export default function GameControls({
   coachMode,
   arrowMode,
   hintMove,
+  hideUndo,
   onUndo,
   onRedo,
   onReset,
@@ -36,11 +37,11 @@ export default function GameControls({
 }) {
   return (
     <div className="glass-panel grid shrink-0 grid-cols-4 gap-1.5 rounded-2xl p-2">
-      <Btn onClick={onUndo} disabled={!canUndo} label={t("undo")}>
+      <Btn onClick={onUndo} disabled={hideUndo || !canUndo} label={t("undo")}>
         <span aria-hidden>↩</span>
         <span>{t("undo")}</span>
       </Btn>
-      <Btn onClick={onRedo} disabled={!canRedo} label={t("redo")}>
+      <Btn onClick={onRedo} disabled={hideUndo || !canRedo} label={t("redo")}>
         <span aria-hidden>↪</span>
         <span>{t("redo")}</span>
       </Btn>

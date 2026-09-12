@@ -61,7 +61,7 @@ export default function CoachPanel({ lang, t, analysis, evalScore, evalPercent, 
             </motion.div>
           </AnimatePresence>
         ) : (
-          <p className="text-xs text-white/45">{t("coachOff")}</p>
+          <p className="text-xs text-white/45">{t("emptyCoach")}</p>
         )}
       </div>
 
