@@ -25,7 +25,7 @@ export function evaluatePosition(chess) {
   let kingSafety = 0;
 
   const board = chess.board();
-  const ply = chess.history().length;
+  const ply = Number(chess.fen().split(" ")[5] ?? 1) * 2;
 
   for (let rank = 0; rank < 8; rank += 1) {
     for (let file = 0; file < 8; file += 1) {

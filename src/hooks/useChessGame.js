@@ -45,7 +45,16 @@ export function useChessGame() {
   const evalPercent = scoreToWhitePercent(evalScore);
   const taken = useMemo(() => capturedPieces(game), [game]);
   const material = useMemo(() => materialDiff(game), [game]);
-  const movePairs = useMemo(() => pairMoves(game.history()), [game]);
+  // Reconstruct SAN from the timeline — a Chess(fen) instance has no history.
+  const historySan = useMemo(
+    () =>
+      timeline
+        .slice(1, cursor + 1)
+        .map((entry) => entry.move?.san)
+        .filter(Boolean),
+    [cursor, timeline],
+  );
+  const movePairs = useMemo(() => pairMoves(historySan), [historySan]);
 
   const status = useMemo(() => {
     if (game.isCheckmate()) return game.turn() === "w" ? "blackWins" : "whiteWins";
@@ -73,10 +82,14 @@ export function useChessGame() {
       const move = probe.move({ from, to, promotion: promotion || undefined });
       if (!move) return s;
       applied = true;
+      const historySan = [
+        ...s.timeline.slice(1, s.cursor + 1).map((entry) => entry.move?.san).filter(Boolean),
+        move.san,
+      ];
       const next = {
         fen: probe.fen(),
         move,
-        analysis: analyzeMove(current.fen, move, probe),
+        analysis: analyzeMove(current.fen, move, probe, historySan),
       };
       return {
         timeline: [...s.timeline.slice(0, s.cursor + 1), next],

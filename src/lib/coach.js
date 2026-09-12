@@ -81,10 +81,9 @@ function pieceName(type, lang) {
  * Rule-based coach: inspect the last move and emit one educational card.
  * All logic is local — no Stockfish, no API keys.
  */
-export function analyzeMove(prevFen, move, after) {
+export function analyzeMove(prevFen, move, after, historySan) {
   const before = new Chess(prevFen);
-  const ply = after.history().length;
-  const historySan = after.history();
+  const ply = historySan.length;
   const opening = lookupOpening(historySan);
   const mover = move.color === "w" ? "White" : "Black";
   const moverHe = move.color === "w" ? "הלבן" : "השחור";
@@ -131,7 +130,7 @@ export function analyzeMove(prevFen, move, after) {
     };
   }
 
-  const arrows = buildCoachArrows(after, move);
+  const arrows = buildCoachArrows(after, move, ply);
 
   if (after.isCheck()) {
     return {
@@ -308,7 +307,7 @@ function quietLesson(_before, after, move) {
     };
   }
 
-  if (move.piece === "k" && after.history().length > 20) {
+  if (move.piece === "k" && after.fen().split(" ")[5] > 20) {
     return {
       id: "king-end",
       title: text("Activate the king", "הפעילו את המלך"),
@@ -329,7 +328,7 @@ function quietLesson(_before, after, move) {
   };
 }
 
-export function buildCoachArrows(chess, lastMove) {
+export function buildCoachArrows(chess, lastMove, ply = 0) {
   const arrows = [];
 
   if (chess.isCheck()) {
@@ -354,7 +353,7 @@ export function buildCoachArrows(chess, lastMove) {
 
   // Opening plan: suggest castling if it is legal and the king is still central.
   const castle = chess.moves({ verbose: true }).find((m) => m.san === "O-O" || m.san === "O-O-O");
-  if (castle && chess.history().length >= 6) {
+  if (castle && ply >= 6) {
     arrows.push({ startSquare: castle.from, endSquare: castle.to, color: COACH_ARROW });
     return arrows;
   }
@@ -365,7 +364,7 @@ export function buildCoachArrows(chess, lastMove) {
     const home = m.color === "w" ? ["b1", "g1"] : ["b8", "g8"];
     return home.includes(m.from);
   });
-  if (undeveloped && chess.history().length <= 16) {
+  if (undeveloped && ply <= 16) {
     arrows.push({ startSquare: undeveloped.from, endSquare: undeveloped.to, color: COACH_ARROW });
   }
 

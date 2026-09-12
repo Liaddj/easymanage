@@ -103,18 +103,7 @@ export default function ChessGameBoard({ gameState }) {
       clearArrowsOnClick: true,
       clearArrowsOnPositionChange: true,
       arrows,
-      arrowOptions: {
-        colors: {
-          default: "#c084fc",
-          shift: "#22d3ee",
-          ctrl: "#fb7185",
-          alt: "#a3e635",
-        },
-        color: "#c084fc",
-        opacity: 0.85,
-      },
-      // Right-drag arrows live in the board's internal state. We only pass
-      // coach / hint / tap-mode arrows here so they are not drawn twice.
+      // Do not replace arrowOptions — a partial object drops width math and hides arrows.
       squareStyles,
       darkSquareStyle: { backgroundColor: "#16122b" },
       lightSquareStyle: { backgroundColor: "#2a3560" },
