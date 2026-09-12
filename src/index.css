@@ -94,7 +94,7 @@ body::before {
 }
 
 .board-frame {
-  width: min(100%, calc(100dvh - 16.8rem));
+  width: min(100%, calc(100dvh - 14.2rem));
   aspect-ratio: 1 / 1;
   border-radius: 16px;
   padding: 3px;
@@ -106,7 +106,7 @@ body::before {
 
 @media (min-width: 1024px) {
   .board-frame {
-    width: min(100%, calc(100dvh - 9.4rem));
+    width: min(100%, calc(100dvh - 8.6rem));
   }
 }
 

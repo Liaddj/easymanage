@@ -19,7 +19,7 @@ export default function CoachPanel({ lang, t, analysis, evalScore, evalPercent, 
     Math.abs(evalScore) < 40 ? t("evalEven") : evalScore > 0 ? t("evalWhite") : t("evalBlack");
 
   return (
-    <section className={`glass-panel relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl bg-gradient-to-br ${tone}`}>
+    <section className={`glass-panel relative flex max-h-28 min-h-0 flex-1 flex-col overflow-hidden rounded-2xl bg-gradient-to-br lg:max-h-none ${tone}`}>
       <div className="flex items-center justify-between gap-2 border-b border-white/5 px-3 py-2">
         <div className="flex items-center gap-2">
           <span className="h-1.5 w-1.5 rounded-full bg-cyan-400 shadow-[0_0_10px_#22d3ee]" />

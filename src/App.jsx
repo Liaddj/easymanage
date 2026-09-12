@@ -14,6 +14,7 @@ import ModeSwitcher from "./components/ModeSwitcher.jsx";
 import MoveList from "./components/MoveList.jsx";
 import PromotionDialog from "./components/PromotionDialog.jsx";
 import PuzzleGoal from "./components/PuzzleGoal.jsx";
+import PuzzleOverlay from "./components/PuzzleOverlay.jsx";
 import ResignDrawBar from "./components/ResignDrawBar.jsx";
 import { useChessGame } from "./hooks/useChessGame.js";
 import { t as translate } from "./i18n.js";
@@ -81,17 +82,29 @@ export default function App() {
       <ModeSwitcher t={t} mode={game.mode} onChange={game.setMode} />
 
       {game.mode === "puzzle" ? (
-        <CurriculumBar
-          lang={lang}
-          t={t}
-          stages={game.stages}
-          stage={game.stage}
-          puzzle={game.puzzle}
-          progress={game.progress}
-          stageProgress={game.stageProgress}
-          overallProgress={game.overallProgress}
-          onOpen={game.openStage}
-        />
+        <>
+          <CurriculumBar
+            lang={lang}
+            t={t}
+            stages={game.stages}
+            stage={game.stage}
+            puzzle={game.puzzle}
+            progress={game.progress}
+            stageProgress={game.stageProgress}
+            overallProgress={game.overallProgress}
+            onOpen={game.openStage}
+          />
+          <PuzzleGoal
+            lang={lang}
+            t={t}
+            stage={game.stage}
+            puzzle={game.puzzle}
+            puzzleState={game.puzzleState}
+            onRetry={game.retryPuzzle}
+            onNext={game.goNextPuzzle}
+            onPlayComputer={() => game.setMode("computer")}
+          />
+        </>
       ) : null}
 
       {game.mode === "computer" ? (
@@ -105,9 +118,9 @@ export default function App() {
         />
       ) : null}
 
-      <main className="mt-1.5 flex min-h-0 flex-1 flex-col gap-2 lg:flex-row lg:gap-3">
-        <section className="flex min-h-0 flex-[1.15] flex-col gap-1.5">
-          <CapturedPieces taken={game.taken} material={game.material} t={t} />
+      <main className="mt-1.5 flex min-h-0 flex-1 flex-col gap-1.5 lg:flex-row lg:gap-3">
+        <section className="flex min-h-0 flex-[1.15] flex-col gap-1">
+          {game.mode !== "puzzle" ? <CapturedPieces taken={game.taken} material={game.material} t={t} /> : null}
           <div className="relative flex min-h-0 flex-1 items-center justify-center gap-2">
             <div className="board-ltr relative flex min-h-0 items-center gap-2">
               <EvaluationBar percent={game.evalPercent} score={game.evalScore} t={t} />
@@ -123,9 +136,19 @@ export default function App() {
                     />
                   ) : null}
                 </AnimatePresence>
-                {game.mode !== "puzzle" ? (
+                {game.mode === "puzzle" ? (
+                  <PuzzleOverlay
+                    lang={lang}
+                    t={t}
+                    puzzle={game.puzzle}
+                    puzzleState={game.puzzleState}
+                    onRetry={game.retryPuzzle}
+                    onNext={game.goNextPuzzle}
+                    onPlayComputer={() => game.setMode("computer")}
+                  />
+                ) : (
                   <GameOverOverlay t={t} status={game.status} onReset={game.reset} />
-                ) : null}
+                )}
                 {game.thinking ? (
                   <p className="pointer-events-none absolute inset-x-3 bottom-3 z-10 rounded-lg bg-black/55 px-2 py-1 text-center text-[11px] text-violet-100">
                     {t("computerThinking")}
@@ -134,41 +157,27 @@ export default function App() {
               </div>
             </div>
           </div>
-          {game.arrowMode ? (
-            <p className="rounded-lg border border-violet-300/30 bg-violet-400/10 px-2 py-1 text-center text-[11px] text-violet-100">
-              {t("arrowModeOn")}
-            </p>
-          ) : (
-            <p className="hidden px-1 text-[10px] text-cyan-100/35 sm:block">{t("drawHint")}</p>
-          )}
         </section>
 
-        <aside className="flex min-h-0 shrink-0 flex-col gap-2 lg:w-[22rem] lg:max-w-[38%]">
-          <div className="flex min-h-0 flex-[1.1] flex-col gap-2 lg:flex-[1.4]">
-            {game.mode === "puzzle" ? (
-              <PuzzleGoal
-                lang={lang}
-                t={t}
-                stage={game.stage}
-                puzzle={game.puzzle}
-                puzzleState={game.puzzleState}
-                onRetry={game.retryPuzzle}
-                onNext={game.goNextPuzzle}
-                onPlayComputer={() => game.setMode("computer")}
-              />
-            ) : (
+        <aside className="flex min-h-0 shrink-0 flex-col gap-1.5 lg:w-[22rem] lg:max-w-[38%]">
+          {game.mode !== "puzzle" ? (
+            <div className="min-h-0 max-h-24 shrink-0 lg:max-h-none lg:flex-[1.4]">
               <CoachPanel
                 lang={lang}
                 t={t}
-                analysis={game.thinking ? { ...game.analysis, body: { en: t("thinkingHint"), he: t("thinkingHint") } } : game.analysis}
+                analysis={
+                  game.thinking
+                    ? { ...game.analysis, body: { en: t("thinkingHint"), he: t("thinkingHint") } }
+                    : game.analysis
+                }
                 evalScore={game.evalScore}
                 evalPercent={game.evalPercent}
                 coachMode={game.coachMode}
                 hintMove={game.hintMove}
               />
-            )}
-          </div>
-          <div className="h-[4.4rem] shrink-0 lg:h-auto lg:min-h-[8rem] lg:flex-1">
+            </div>
+          ) : null}
+          <div className={`h-[3.2rem] shrink-0 lg:h-auto lg:min-h-[8rem] lg:flex-1 ${game.mode === "puzzle" ? "hidden lg:flex" : ""}`}>
             <MoveList pairs={game.movePairs} t={t} />
           </div>
           {game.mode !== "puzzle" ? (

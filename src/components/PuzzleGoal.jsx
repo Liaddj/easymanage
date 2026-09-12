@@ -20,16 +20,16 @@ export default function PuzzleGoal({ lang, t, stage, puzzle, puzzleState, onRetr
 
   return (
     <section
-      className={`glass-panel rounded-2xl px-3 py-2 ${
+      className={`glass-panel shrink-0 rounded-2xl px-3 py-1.5 ${
         failed ? "border-rose-300/30" : success || pathDone ? "border-emerald-300/30" : ""
       }`}
       aria-live="polite"
     >
-      <p className="text-[10px] font-semibold tracking-[0.16em] text-white/40 uppercase">
+      <p className="truncate text-[10px] font-semibold tracking-wide text-white/40 uppercase">
         {pick(lang, stage.goal)}
       </p>
-      <h3 className="mt-0.5 text-sm font-semibold text-white">{title}</h3>
-      <p className="mt-0.5 line-clamp-3 text-xs leading-relaxed text-white/65">{body}</p>
+      <h3 className="truncate text-sm font-semibold text-white">{title}</h3>
+      <p className="line-clamp-2 text-xs leading-snug text-white/65">{body}</p>
       {failed || success || pathDone ? (
         <div className="mt-2 flex flex-wrap gap-1.5">
           {failed ? (

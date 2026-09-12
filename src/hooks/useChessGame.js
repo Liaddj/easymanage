@@ -517,6 +517,11 @@ export function useChessGame() {
   }, [cue]);
 
   useEffect(() => {
+    if (mode !== "puzzle") return;
+    setOrientation(puzzleColor === "b" ? "black" : "white");
+  }, [mode, puzzle.id, puzzleColor]);
+
+  useEffect(() => {
     if (mode !== "computer") return;
     if (gameOver || pendingPromotion || localResult) return;
     if (game.turn() === humanColor) return;

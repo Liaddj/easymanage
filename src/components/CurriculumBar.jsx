@@ -35,7 +35,7 @@ export default function CurriculumBar({
               type="button"
               onClick={() => onOpen(item.id, item.puzzles[0].id)}
               aria-current={active ? "step" : undefined}
-              className={`shrink-0 rounded-lg px-2 py-1 text-[10px] font-semibold ${
+              className={`shrink-0 whitespace-nowrap rounded-lg px-2 py-1 text-[10px] font-semibold ${
                 active ? "bg-cyan-400/18 text-cyan-50" : "bg-white/[0.04] text-white/55"
               }`}
             >

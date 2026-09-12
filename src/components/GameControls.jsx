@@ -7,7 +7,7 @@ function Btn({ onClick, disabled, active, glow = "glow-cyan", children, label })
       title={label}
       aria-label={label}
       aria-pressed={active || undefined}
-      className={`${glow} flex min-h-11 items-center justify-center gap-1.5 rounded-xl border px-2 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-35 ${
+      className={`${glow} flex min-h-10 items-center justify-center gap-1 rounded-xl border px-1.5 text-[11px] font-semibold whitespace-nowrap transition disabled:cursor-not-allowed disabled:opacity-35 sm:min-h-11 sm:text-xs ${
         active
           ? "border-cyan-300/60 bg-cyan-400/20 text-cyan-50 shadow-[0_0_16px_rgba(34,211,238,0.25)]"
           : "border-cyan-300/15 bg-black/25 text-white/90"
